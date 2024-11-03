@@ -2,7 +2,19 @@ const userController = require('../controllers/userController')
 const express = require('express')
 const { isAuthenticated, checkRoleOrPermission } = require('../middleware/authMiddleware')
 const router = express.Router()
+const { getDashboardStats } = require('../controllers/statsController');
+
 
 router.get('/get-users',isAuthenticated,checkRoleOrPermission('READ_USER'),userController.get)
 
-module.exports = router
+router.put('/update/:id',isAuthenticated,checkRoleOrPermission('UPDATE_USER'),userController.update)
+
+router.put('/token',isAuthenticated,checkRoleOrPermission('UPDATE_USER'),userController.updatePushNotifyToken)
+
+router.post('/create',isAuthenticated,checkRoleOrPermission('CREATE_USER'),userController.create)
+
+router.post('/send-notification',userController.sendNotification)
+
+router.get('/dashboard-stats',isAuthenticated,checkRoleOrPermission('READ_STATS'), getDashboardStats);
+
+module.exports = router;

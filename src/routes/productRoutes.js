@@ -11,5 +11,6 @@ router.get('/',authMiddleware.checkRoleOrPermission("READ_PRODUCT"), productCont
 router.get('/:productId',authMiddleware.checkRoleOrPermission('READ_PRODUCT'), productController.getProductById);
 router.put('/:productId', authMiddleware.checkRoleOrPermission('UPDATE_PRODUCT'), productController.updateProduct);
 router.delete('/:productId', authMiddleware.checkRoleOrPermission('DELETE_PRODUCT'), productController.deleteProduct);
+router.get('/category/:categoryId', authMiddleware.checkRoleOrPermission('READ_PRODUCT'), productController.getProductsByCategoryId); // New route
 
 module.exports = router;

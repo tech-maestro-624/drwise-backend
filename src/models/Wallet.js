@@ -28,9 +28,31 @@ const WalletSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
       },
+      status : {
+        type : String,
+        required : false,
+      },
+      transactionId : String,
       description: String,
     },
   ],
 },{timestamps : true});
+
+WalletSchema.methods.addTransaction = async function (type, amount, description) {
+  if (type === 'credit') {
+    this.balance += Number(amount);
+  } else if (type === 'debit') {
+    this.balance -= Number(amount);
+  }
+
+  this.transactions.push({
+    type,
+    amount : Number(amount),
+    date: new Date(),
+    description,
+  });
+
+  await this.save();
+};
 
 module.exports = mongoose.model('Wallet', WalletSchema);

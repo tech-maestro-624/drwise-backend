@@ -65,3 +65,17 @@ exports.deleteProduct = async (req, res) => {
     res.status(500).json({ message: 'Failed to delete product' });
   }
 };
+
+exports.getProductsByCategoryId = async (req, res) => {
+  console.log(req.params);
+  
+  const { categoryId } = req.params;
+
+  try {
+    const products = await productService.getProductsByCategoryId(categoryId);
+    res.status(200).json(products);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to retrieve products' });
+  }
+};
