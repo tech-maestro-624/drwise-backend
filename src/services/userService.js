@@ -4,6 +4,7 @@ const Configuration = require('../models/Configuration')
 const Role = require('../models/Role')
 const Lead = require('../models/Lead');
 const { sendOtp } = require('../controllers/authController');
+const sendPushNotification = require("../utils/pushNotification");
 
 exports.get = async(query={}) => {
     try {
@@ -172,3 +173,21 @@ exports.sendNotification = async (data) => {
     console.error('Error sending notifications:', error.message);
   }
 };
+
+exports.update = async(id,data) => {
+  try {
+    const user= await User.findByIdAndUpdate(id,data,{new : true})
+    return user
+  } catch (error) {
+    throw error
+  }
+}
+
+exports.create = async(data) => {
+  try {
+    const user = new User(data)
+    return await user.save()
+  } catch (error) {
+    throw error;
+  }
+}

@@ -38,10 +38,15 @@ async function deleteProduct(productId) {
   return product;
 }
 
+async function getProductsByCategoryId(categoryId) {
+  return Product.find({ categoryId })
+}
+
 module.exports = {
   createProduct,
   getAllProducts,
   getProductById,
   updateProduct,
   deleteProduct,
+  getProductsByCategoryId
 };

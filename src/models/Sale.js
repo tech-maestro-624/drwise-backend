@@ -11,11 +11,21 @@ const SaleSchema = new mongoose.Schema({
   product: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
-    required: true,
+    required: false,
   },
   price: {
     type: Number,
     required: true,
+  },
+  categoryId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    required: false,
+  },
+  productId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product',
+    required: false,
   },
   conversionDate: {
     type: Date,
@@ -30,6 +40,6 @@ const SaleSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-});
+}, {timestamps : true});
 
 module.exports = mongoose.model('Sale', SaleSchema);

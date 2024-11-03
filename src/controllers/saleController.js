@@ -28,7 +28,7 @@ async function getSaleById(req, res) {
 // Get all sales
 async function getAllSales(req, res) {
   try {
-    const sales = await saleService.getAllSales();
+    const sales = await saleService.getAllSales(req.query);
     res.json(sales);
   } catch (error) {
     res.status(500).json({ message: error.message });

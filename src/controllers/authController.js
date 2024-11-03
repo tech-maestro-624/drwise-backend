@@ -2,9 +2,11 @@
 
 const User = require('../models/User');
 const passport = require('passport');
-const twilio = require('twilio');
+// const twilio = require('twilio');
+const {getConfig} = require('../services/configurationService')
 const crypto = require('crypto');
-
+const mongoose = require('mongoose');
+const ObjectId = mongoose.Types.ObjectId;
 // const client = new twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
 
 exports.sendOtp = async (req, res) => {
@@ -18,16 +20,17 @@ exports.sendOtp = async (req, res) => {
     const otpExpires = Date.now() + 5 * 60 * 1000;
 
     // Find or create user with the provided phone number
-    let user = await User.findOne({ phoneNumber });
+    // let user = await User.findOne({ phoneNumber });
+    // let userRole = await getConfig('USER_ROLE_ID');
+    // console.log(userRole)
+    // if (!user) {
+    //   user = new User({ phoneNumber, otp, otpExpires,roles :[userRole] });
+    // } else {
+    //   user.otp = otp;
+    //   user.otpExpires = otpExpires;
+    // }
 
-    if (!user) {
-      user = new User({ phoneNumber, otp, otpExpires });
-    } else {
-      user.otp = otp;
-      user.otpExpires = otpExpires;
-    }
-
-    await user.save();
+    // await user.save();
 
     // Send OTP via SMS
     // await client.messages.create({

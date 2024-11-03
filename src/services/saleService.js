@@ -4,8 +4,6 @@ const Sale = require('../models/Sale');
 
 // Create a new sale
 async function createSale(data) {
-  console.log(data);
-  
   const sale = new Sale(data);
   return await sale.save();
 }
@@ -16,16 +14,48 @@ async function getSaleById(id) {
 }
 
 // Get all sales
-async function getAllSales() {
-  return await Sale.find().populate('lead referrer');
+// async function getAllSales() {
+  
+//   return await Sale.find().populate('lead referrer product');
+// }
+
+ async function getAllSales(query = {}) {
+  try {
+      const page = parseInt(query.page) || 1;
+      const limit = parseInt(query.limit) || 10;
+      const skip = (page - 1) * limit;
+
+      // Parse and validate condition if provided
+      if (query.condition && typeof(query.condition) !== 'object') {
+          try {
+              query = JSON.parse(query.condition);
+          } catch (error) {
+              throw new Error("Invalid condition format");
+          }
+      }
+
+      const sales = await Sale.find(query.condition)
+                              .skip(skip)
+                              .limit(limit)
+                              .sort({ createdAt: -1 })
+                              .populate('lead referrer product categoryId');
+      
+      const total = await Sale.countDocuments(query.condition);
+      return {
+          totalPages: Math.ceil(total / limit),
+          currentPage: page,
+          sales
+      };
+  } catch (error) {
+      throw error;
+  }
 }
 
-// Update a sale by ID
+
 async function updateSale(id, data) {
   return await Sale.findByIdAndUpdate(id, data, { new: true });
 }
 
-// Delete a sale by ID
 async function deleteSale(id) {
   return await Sale.findByIdAndDelete(id);
 }

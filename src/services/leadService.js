@@ -2,15 +2,13 @@
 
 const Lead = require('../models/Lead');
 
-async function createLead(name, phoneNumber, referrer) {
-  const lead = new Lead({ name, phoneNumber, referrer: referrer });
+async function createLead(name, phoneNumber, referrer,categoryId, productId) {
+  const lead = new Lead({ name, phoneNumber, referrer: referrer,categoryId,productId });
   await lead.save();
   return lead;
 }
 
 async function getAllLeads(query = {}) {
-  console.log(query);
-  
   try {
     const page = parseInt(query.page) || 1;
     const limit = parseInt(query.limit) || 10;
@@ -27,6 +25,9 @@ async function getAllLeads(query = {}) {
       .limit(limit)
       .sort({ createdAt: -1 })
       .populate('referrer')
+      .populate('categoryId')
+      .populate('productId')
+
     const total = await Lead.countDocuments(query.condition);
     return {
       totalPages: Math.ceil(total / limit),
@@ -39,11 +40,11 @@ async function getAllLeads(query = {}) {
 }
 
 async function getLeadById(leadId) {
-  return Lead.findById(leadId).populate('referrer');
+  return Lead.findById(leadId).populate('referrer').populate('categoryId').populate('productId')
 }
 
-async function updateLead(leadId, status) {
-  const lead = await Lead.findByIdAndUpdate(leadId, { status }, { new: true });
+async function updateLead(leadId, data) {
+  const lead = await Lead.findByIdAndUpdate(leadId, {$set : data},{new : true});
   if (!lead) {
     throw new Error('Lead not found');
   }

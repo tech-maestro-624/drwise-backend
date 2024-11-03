@@ -3,10 +3,10 @@
 const leadService = require('../services/leadService');
 
 exports.createLead = async (req, res) => {
-  const { name, phoneNumber, referrer } = req.body;
+  const { name, phoneNumber, referrer, categoryId, productId } = req.body;
 
   try {
-    const lead = await leadService.createLead(name, phoneNumber, referrer);
+    const lead = await leadService.createLead(name, phoneNumber, referrer,categoryId,productId);
     res.status(201).json({ message: 'Lead created successfully', lead });
   } catch (error) {
     console.error(error);
@@ -15,10 +15,8 @@ exports.createLead = async (req, res) => {
 };
 
 exports.getAllLeads = async (req, res) => {
-  console.log("req?.body",req?.body);
-  
   try {
-    const leads = await leadService.getAllLeads(req?.body);
+    const leads = await leadService.getAllLeads(req?.query);
     res.status(200).json(leads);
   } catch (error) {
     console.error(error);
@@ -43,10 +41,8 @@ exports.getLeadById = async (req, res) => {
 
 exports.updateLead = async (req, res) => {
   const { leadId } = req.params;
-  const { status } = req.body;
-
   try {
-    const lead = await leadService.updateLead(leadId, status);
+    const lead = await leadService.updateLead(leadId, req?.body );
     res.status(200).json({ message: 'Lead updated successfully', lead });
   } catch (error) {
     console.error(error);
