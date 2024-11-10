@@ -26,6 +26,8 @@ exports.creditWallet = async (req, res) => {
 
 exports.debitWallet = async (req, res) => {
   const { user,amount, description, transactionId } = req.body;
+  console.log('Controller',req.body);
+  
 
   try {
     const wallet = await walletService.debitWallet(user, amount, description, transactionId);

@@ -32,7 +32,7 @@ const WalletSchema = new mongoose.Schema({
         type : String,
         required : false,
       },
-      transactionId : String,
+      transactionId : {type : String, default : null},
       description: String,
     },
   ],

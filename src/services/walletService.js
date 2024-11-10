@@ -20,6 +20,7 @@ async function creditWallet(userId, amount, description = 'Credit') {
 
 async function debitWallet(user, amount, description = 'Debit', transactionId) {
   const wallet = await getWalletByUserId(user);
+  console.log(user, amount, description = 'Debit', transactionId);
   
   if (wallet.balance < amount) {
     throw new Error('Insufficient balance');
@@ -30,7 +31,8 @@ async function debitWallet(user, amount, description = 'Debit', transactionId) {
   
   const pending = wallet.transactions.find(transaction => transaction.status === 'pending')
   if(pending){
-    pending.status = 'approved'
+    pending.status = 'approved',
+    pending.transactionId = transactionId
   }
   await wallet.save();
   return wallet;

@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Sale = require('../models/Sale');
 const Lead = require('../models/Lead');
+const Config = require('../models/Configuration')
 
 // Centralized error logging function for consistency
 function logAndThrowError(action, error) {
