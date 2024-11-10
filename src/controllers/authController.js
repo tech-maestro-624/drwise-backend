@@ -10,7 +10,7 @@ const ObjectId = mongoose.Types.ObjectId;
 // const client = new twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
 
 exports.sendOtp = async (req, res) => {
-  const { phoneNumber } = req.body;
+  const { phoneNumber, referralCode } = req.body;
 
   try {
     // Generate a 6-digit OTP
@@ -20,17 +20,29 @@ exports.sendOtp = async (req, res) => {
     const otpExpires = Date.now() + 5 * 60 * 1000;
 
     // Find or create user with the provided phone number
-    // let user = await User.findOne({ phoneNumber });
-    // let userRole = await getConfig('USER_ROLE_ID');
-    // console.log(userRole)
-    // if (!user) {
-    //   user = new User({ phoneNumber, otp, otpExpires,roles :[userRole] });
-    // } else {
-    //   user.otp = otp;
-    //   user.otpExpires = otpExpires;
-    // }
+    let user = await User.findOne({ phoneNumber });
+    let userRole = await getConfig('USER_ROLE_ID');
+    
+    if (!user) {
+      let referredBy = null;
+      if (referralCode) {
+        const referringUser = await User.findOne({ refCode: referralCode });
+        if (referringUser) {
+          referredBy = referringUser._id;
+        } else {
+          return res.status(400).json({ message: 'Invalid referral code' });
+        }
+      }
 
-    // await user.save();
+      // Create a new user with phoneNumber, OTP, and referredBy (if valid)
+      user = new User({ phoneNumber, otp, otpExpires, roles: [userRole], referredBy });
+    } else {
+      // Update existing user with new OTP and expiration
+      user.otp = otp;
+      user.otpExpires = otpExpires;
+    }
+
+    await user.save();
 
     // Send OTP via SMS
     // await client.messages.create({

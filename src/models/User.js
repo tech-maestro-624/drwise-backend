@@ -2,7 +2,7 @@
 
 const mongoose = require('mongoose');
 const Wallet = require('./Wallet')
-
+// const customAlphabet  = require('nanoid');
 const UserSchema = new mongoose.Schema({
   phoneNumber: {
     type: String,
@@ -55,14 +55,13 @@ const UserSchema = new mongoose.Schema({
 UserSchema.pre('save', async function (next) {
   if (this.isNew && !this.refCode) {
     try {
-      // Generate a unique identifier
+      // Dynamically import nanoid
+      const { customAlphabet } = await import('nanoid');
       const nanoid = customAlphabet('1234567890abcdef', 6);
       const uniqueId = nanoid();
 
-      // Extract the first name or use a default
       const firstName = this.name ? this.name.split(' ')[0] : 'user';
 
-      // Combine and sanitize
       this.refCode = `${firstName.toLowerCase()}-${uniqueId}`;
     } catch (error) {
       return next(error);
@@ -70,7 +69,6 @@ UserSchema.pre('save', async function (next) {
   }
   next();
 });
-
 
 UserSchema.post('save', async function (doc) {
   try {
