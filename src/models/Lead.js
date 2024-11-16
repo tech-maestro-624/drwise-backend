@@ -23,12 +23,12 @@ const LeadSchema = new mongoose.Schema({
   categoryId : {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
-    required: true,
+    required: false,
   },
   productId : {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
-    required: true,
+    required: false,
   },
   notes: [],
   status: {
