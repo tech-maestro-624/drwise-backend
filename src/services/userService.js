@@ -23,6 +23,8 @@ exports.get = async(query={}) => {
                                 .limit(limit)
                                 .sort({createdAt : -1})
                                 .populate('wallet')
+                                console.log(data);
+                                
         const total = await User.countDocuments(query.condition);
         return {
             totalPages: Math.ceil(total / limit),
@@ -96,17 +98,6 @@ exports.register = async (roleName = 'DEFAULT_USER', data) => {
     });
 
     await user.save();
-
-    // Create a corresponding lead
-    const lead = new Lead({
-      name: data.name || '', // If name is not provided, default to an empty string
-      email: data.email || '',
-      phoneNumber: data.phoneNumber,
-      source: 'Registration', // Assuming the source of the lead is the registration process
-      status: 'New',
-    });
-
-    await lead.save();
 
     // Generate and log OTP
     const otp = await sendOtp(user.phoneNumber);

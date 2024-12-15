@@ -49,7 +49,8 @@ app.use(cors({
     'http://internal.local:3001',
     'http://192.168.0.25:3000',
     'http://192.168.1.6:3000',
-    'http://192.168.1.6:3000/'
+    'http://192.168.1.6:3000/',
+    "http://localhost:62448"
   ],
   credentials: true
 }));
@@ -71,6 +72,8 @@ app.use('/models', require('./src/routes/modelRoutes'));
 app.use('/sale', require('./src/routes/saleRoutes'));
 app.use('/wallet', require('./src/routes/walletRoutes'));
 app.use('/referal', require('./src/routes/referralRoutes'));
+app.use('/affiliate', require('./src/routes/affiliateRoutes'));
+
 
 app.get('/', (req, res) => {
   res.send('API is running...');

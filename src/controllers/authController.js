@@ -7,24 +7,34 @@ const {getConfig} = require('../services/configurationService')
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const ObjectId = mongoose.Types.ObjectId;
+const subscriptionService = require('../services/subscriptionService')
 // const client = new twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
 
 
 exports.register = async (req, res) => {
-  const { name, email, phoneNumber, referralCode, otp } = req.body;
+  const { name, email, phoneNumber, referralCode, otp, verified } = req.body;
 
   try {
     let userRole = await getConfig('USER_ROLE_ID');
+    let ambassadorRole = await getConfig('AMBASSADOR_ROLE_ID')
     let referredBy = null;
+    let ambassadorId = null
 
     // Check if the referral code is valid
     if (referralCode) {
+      
       const referringUser = await User.findOne({ refCode: referralCode });
       if (referringUser) {
         referredBy = referringUser._id;
-      } else {
-        return res.status(400).json({ message: 'Invalid referral code' });
-      }
+
+        const referringUserRoles = referringUser.roles
+        if(referringUserRoles.includes(ambassadorRole)){
+          ambassadorId = referringUser._id
+        }
+      } 
+      // else {
+      //   return res.status(400).json({ message: 'Invalid referral code' });
+      // }
     }
 
     // Check if a user with this phone number or email already exists
@@ -40,8 +50,10 @@ exports.register = async (req, res) => {
       phoneNumber,
       roles: [userRole],
       referredBy,
+      ambassadorId,
       otp,
-      otpExpires:new Date()
+      otpExpires:new Date(),
+      verified
     });
 
     await newUser.save();
@@ -213,3 +225,43 @@ exports.getUserData = async(req,res) => {
   const populatedUser = await getUserWithRolesAndPermissions(user._id);
   return res.json({ user: populatedUser });
 }
+
+
+exports.registerAmbassador = async (req, res) => {
+  const { name, email, phoneNumber,startDate,endDate,subscriptionAmount, otp, otpExpires} = req.body;
+
+  try {
+    let ambassadorRole = await getConfig('AMBASSADOR_ROLE_ID');
+
+    // Check if a user with this phone number or email already exists
+    let existingUser = await User.findOne({ $or: [{ phoneNumber }, { email }] });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User with this phone number or email already exists' });
+    }
+
+    // Create a new user
+    const newUser = new User({
+      name,
+      email,
+      phoneNumber,
+      roles: [ambassadorRole],
+      otp, otpExpires,
+      verified : true
+    });
+    await newUser.save();
+
+    try {
+      await subscriptionService.createSubscription(newUser._id,startDate,endDate,subscriptionAmount, ambassadorRole.value);
+      console.log("Subscription created and processed successfully for ambassador:", newUser.name);
+    } catch (subscriptionError) {
+      console.log("Error creating/processing subscription:", subscriptionError);
+      await User.findByIdAndDelete(newUser._id);
+      return res.status(500).json({ message: 'Failed to create subscription for ambassador' });
+    }
+
+    res.status(201).json({ message: 'Ambassador registration successful', user: newUser });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: 'Failed to register ambassador' });
+  }
+};
