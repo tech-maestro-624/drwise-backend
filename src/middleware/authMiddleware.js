@@ -52,7 +52,6 @@ exports.checkRoleOrPermission = (permission) => {
           return next();
         }
       }
-      console.log("Permission",permission)
       return res.status(403).json({ message: 'Forbidden' });
     } catch (err) {
       console.log(err)

@@ -17,7 +17,7 @@ const WalletSchema = new mongoose.Schema({
     {
       type: {
         type: String,
-        enum: ['credit', 'debit'],
+        enum: ['credit', 'debit', 'JOINING_BONUS'],
         required: true,
       },
       amount: {

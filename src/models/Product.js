@@ -10,6 +10,7 @@ const ProductSchema = new mongoose.Schema({
   description: {
     type: String,
   },
+  benefits : [],
   categoryId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',

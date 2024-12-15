@@ -1,7 +1,7 @@
 // models/User.js
-
 const mongoose = require('mongoose');
-const Wallet = require('./Wallet')
+const Wallet = require('./Wallet');
+const Configuration = require('./Configuration');
 // const customAlphabet  = require('nanoid');
 const UserSchema = new mongoose.Schema({
   phoneNumber: {
@@ -9,15 +9,24 @@ const UserSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
-  name : String,
-  email : String,
+  subscription: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subscription',
+  },
+  otpVerified: {
+    type: Boolean,
+    default: false,
+  },
+  name: String,
+  email: String,
   otp: {
     type: String,
-    required: true,
+    required: false,
   },
   otpExpires: {
     type: Date,
     required: true,
+    default: Date.now()
   },
   roles: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -31,25 +40,35 @@ const UserSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Wallet',
   },
-  referredBy : {
-    type : mongoose.Schema.Types.ObjectId,
-    ref : 'User',
-    required : false,
-    default : null
+  referredBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false,
+    default: null
   },
-  pushNotificationToken : String,
-  withdrawalMethod : String,
-  withdrawalDetails : {
-    type : mongoose.Schema.Types.Mixed,
-    required : false,
-    default : {}
+  pushNotificationToken: String,
+  withdrawalMethod: String,
+  withdrawalDetails: {
+    type: mongoose.Schema.Types.Mixed,
+    required: false,
+    default: {}
   },
-  verified : {
+  verified: {
+    type: Boolean,
+    default: false
+  },
+  refCode: String,
+  acceptedPolicies : {
     type : Boolean,
     default : false
   },
-  refCode : String,
-},{timestamps : true});
+  ambassadorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false,
+    default: null
+  }
+}, { timestamps: true });
 
 
 UserSchema.pre('save', async function (next) {
@@ -83,6 +102,16 @@ UserSchema.post('save', async function (doc) {
       // Update the user with the wallet ID
       doc.wallet = savedWallet._id;
       await doc.save(); // Save the user with the new wallet reference
+      const config = await Configuration.findOne({ key: 'JOINING_BONUS' });
+      savedWallet.balance += config.value;
+      const joiningBonusTransaction = {
+        type: 'credit',
+        amount: config.value,  
+        description: 'Joining Bonus',
+        date: new Date(),
+      }
+      savedWallet.transactions.push(joiningBonusTransaction);
+      await savedWallet.save();
     }
   } catch (error) {
     console.error('Error creating wallet for user:', error);
