@@ -184,8 +184,8 @@ exports.login = (req, res, next) => {
         // Set the session token as a cookie
         res.cookie('sessionToken', sessionToken, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',  // Only true in production (HTTPS)
-          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'none',  // Adjust based on your needs
+          secure: true,  // Only true in production (HTTPS)
+          sameSite: 'none',  // Adjust based on your needs
           maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days . Try now chandru
         });
 
