@@ -95,7 +95,11 @@ exports.sendOtp = async (req, res) => {
     //   from: process.env.TWILIO_PHONE_NUMBER,
     // });
 
-    res.status(200).json({ message: 'OTP sent successfully' });
+    // res.status(200).json({ message: 'OTP sent successfully' });
+    res.status(200).json({ 
+      message: 'OTP sent successfully', 
+      otp // Include OTP in the response
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to send OTP' });
@@ -184,7 +188,8 @@ exports.login = (req, res, next) => {
         // Set the session token as a cookie
         res.cookie('sessionToken', sessionToken, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',  // Only true in production (HTTPS)
+          // secure: process.env.NODE_ENV === 'production',  // Only true in production (HTTPS)
+          secure : true,
           sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'none',  // Adjust based on your needs
           maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days . Try now chandru
         });
