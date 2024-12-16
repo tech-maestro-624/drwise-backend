@@ -25,7 +25,11 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
-  cookie: { maxAge: 24 * 60 * 60 * 1000 }, // 1 day
+  cookie: { 
+      httpOnly: true,
+          secure: true,  // Only true in production (HTTPS)
+          sameSite: 'none',  // Adjust based on your needs
+          maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days . Try now chandru}, // 1 day
 }));
 
 // Generate CRUD permissions for all models
