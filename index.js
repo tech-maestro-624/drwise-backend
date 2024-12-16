@@ -17,7 +17,7 @@ const app = express();
 connectDB();
 
 // Middleware
-
+app.set('trust proxy', 1)
 console.log(process.env.MONGO_URI)
 // Session middleware
 app.use(session({
