@@ -102,43 +102,43 @@ exports.sendOtp = async (req, res) => {
   }
 };
 
-exports.sendOtp = async (req, res) => {
-  const { phoneNumber } = req.body;
+// exports.sendOtp = async (req, res) => {
+//   const { phoneNumber } = req.body;
 
-  try {
-    // Check if the user with the provided phone number exists
-    let user = await User.findOne({ phoneNumber });
+//   try {
+//     // Check if the user with the provided phone number exists
+//     let user = await User.findOne({ phoneNumber });
     
-    if (!user) {
-      // If user doesn't exist, return an error
-      return res.status(400).json({ message: 'User does not exist. Please register first.' });
-    }
+//     if (!user) {
+//       // If user doesn't exist, return an error
+//       return res.status(400).json({ message: 'User does not exist. Please register first.' });
+//     }
 
-    // Generate a 6-digit OTP
-    const otp = crypto.randomInt(100000, 999999).toString();
+//     // Generate a 6-digit OTP
+//     const otp = crypto.randomInt(100000, 999999).toString();
 
-    // Set OTP expiration time (e.g., 5 minutes)
-    const otpExpires = Date.now() + 5 * 60 * 1000;
+//     // Set OTP expiration time (e.g., 5 minutes)
+//     const otpExpires = Date.now() + 5 * 60 * 1000;
 
-    // Update existing user with new OTP and expiration
-    user.otp = otp;
-    user.otpExpires = otpExpires;
+//     // Update existing user with new OTP and expiration
+//     user.otp = otp;
+//     user.otpExpires = otpExpires;
 
-    await user.save();
+//     await user.save();
 
-    // Send OTP via SMS
-    // await client.messages.create({
-    //   body: `Your OTP is ${otp}`,
-    //   to: phoneNumber,
-    //   from: process.env.TWILIO_PHONE_NUMBER,
-    // });
+//     // Send OTP via SMS
+//     // await client.messages.create({
+//     //   body: `Your OTP is ${otp}`,
+//     //   to: phoneNumber,
+//     //   from: process.env.TWILIO_PHONE_NUMBER,
+//     // });
 
-    res.status(200).json({ message: 'OTP sent successfully' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to send OTP' });
-  }
-};
+//     res.status(200).json({ message: 'OTP sent successfully' });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: 'Failed to send OTP' });
+//   }
+// };
 
 
 // exports.login = (req, res, next) => {
@@ -181,22 +181,24 @@ exports.login = (req, res, next) => {
 
         const sessionToken = require('crypto').randomBytes(64).toString('hex');
 
-        // Example of setting a session token in Redis, uncomment if needed
-        // if (user.roles.includes('admin') || user.roles.includes('hr')) {
-        //   await redisClient.set(`userSession:${user._id}`, sessionToken, { EX: 13 * 60 * 60 });
-        // }
-
-       
+        // Set the session token as a cookie
+        res.cookie('sessionToken', sessionToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',  // Only true in production (HTTPS)
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'none',  // Adjust based on your needs
+          maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days . Try now chandru
+        });
 
         const populatedUser = await getUserWithRolesAndPermissions(user._id);
         return res.json({ user: populatedUser });
-
       });
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
   })(req, res, next);
 };
+
+
 
 const getUserWithRolesAndPermissions = async (userId) => {
   return await User.findById(userId)
