@@ -50,7 +50,8 @@ app.use(cors({
     'http://192.168.0.25:3000',
     'http://192.168.1.6:3000',
     'http://192.168.1.6:3000/',
-    "http://localhost:62448"
+    "http://localhost:62448",
+    'https://drwise-internal.vercel.app',
   ],
   credentials: true
 }));
