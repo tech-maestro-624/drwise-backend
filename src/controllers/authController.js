@@ -95,7 +95,11 @@ exports.sendOtp = async (req, res) => {
     //   from: process.env.TWILIO_PHONE_NUMBER,
     // });
 
-    res.status(200).json({ message: 'OTP sent successfully' });
+    // res.status(200).json({ message: 'OTP sent successfully' });
+     res.status(200).json({ 
+      message: 'OTP sent successfully', 
+      otp // Include OTP in the response
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to send OTP' });
