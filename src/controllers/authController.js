@@ -16,25 +16,24 @@ exports.register = async (req, res) => {
 
   try {
     let userRole = await getConfig('USER_ROLE_ID');
-    let ambassadorRole = await getConfig('AMBASSADOR_ROLE_ID')
+    let ambassadorRole = await getConfig('AMBASSADOR_ROLE_ID');
     let referredBy = null;
-    let ambassadorId = null
+    let ambassadorId = null;
 
     // Check if the referral code is valid
     if (referralCode) {
-      
       const referringUser = await User.findOne({ refCode: referralCode });
       if (referringUser) {
         referredBy = referringUser._id;
 
-        const referringUserRoles = referringUser.roles
-        if(referringUserRoles.includes(ambassadorRole)){
-          ambassadorId = referringUser._id
+        const referringUserRoles = referringUser.roles;
+        if (referringUserRoles.includes(ambassadorRole)) {
+          ambassadorId = referringUser._id;
         }
-      } 
-      // else {
-      //   return res.status(400).json({ message: 'Invalid referral code' });
-      // }
+      } else {
+        // Return an error if the referral code is invalid
+        return res.status(400).json({ message: 'Invalid referral code' });
+      }
     }
 
     // Check if a user with this phone number or email already exists
@@ -52,8 +51,8 @@ exports.register = async (req, res) => {
       referredBy,
       ambassadorId,
       otp,
-      otpExpires:new Date(),
-      verified
+      otpExpires: new Date(),
+      verified,
     });
 
     await newUser.save();
@@ -63,6 +62,7 @@ exports.register = async (req, res) => {
     res.status(500).json({ message: 'Failed to register user' });
   }
 };
+
 
 exports.sendOtp = async (req, res) => {
   const { phoneNumber } = req.body;
@@ -96,7 +96,7 @@ exports.sendOtp = async (req, res) => {
     // });
 
     // res.status(200).json({ message: 'OTP sent successfully' });
-    res.status(200).json({ 
+     res.status(200).json({ 
       message: 'OTP sent successfully', 
       otp // Include OTP in the response
     });
@@ -188,9 +188,8 @@ exports.login = (req, res, next) => {
         // Set the session token as a cookie
         res.cookie('sessionToken', sessionToken, {
           httpOnly: true,
-          // secure: process.env.NODE_ENV === 'production',  // Only true in production (HTTPS)
-          secure : true,
-          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'none',  // Adjust based on your needs
+          secure: true,  // Only true in production (HTTPS)
+          sameSite: 'none',  // Adjust based on your needs
           maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days . Try now chandru
         });
 
@@ -259,9 +258,7 @@ exports.registerAmbassador = async (req, res) => {
 
     try {
       await subscriptionService.createSubscription(newUser._id,startDate,endDate,subscriptionAmount, ambassadorRole.value);
-      console.log("Subscription created and processed successfully for ambassador:", newUser.name);
     } catch (subscriptionError) {
-      console.log("Error creating/processing subscription:", subscriptionError);
       await User.findByIdAndDelete(newUser._id);
       return res.status(500).json({ message: 'Failed to create subscription for ambassador' });
     }

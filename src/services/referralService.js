@@ -22,8 +22,6 @@ async function convertLead(leadId, productId, price, conversionAmt, refBonus, ca
     categoryId:categoryId
   });
 
-  
-
   await sale.save();
 
   // Update the referrer's wallet
@@ -44,7 +42,6 @@ async function convertLead(leadId, productId, price, conversionAmt, refBonus, ca
   }
 
   const secondDegWallet = await Wallet.findOne({ user: secondDegUser._id });
-  console.log("2nd wallet",secondDegWallet)
 
   if (!secondDegWallet) {
     return { lead, sale, wallet, secondDegWallet };
