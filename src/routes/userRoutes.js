@@ -17,4 +17,6 @@ router.post('/send-notification',userController.sendNotification)
 
 router.get('/dashboard-stats',isAuthenticated,checkRoleOrPermission('READ_STATS'), getDashboardStats);
 
+router.delete('/:id', isAuthenticated, checkRoleOrPermission('DELETE_USER'), userController.delete);
+
 module.exports = router;

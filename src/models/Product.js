@@ -15,6 +15,11 @@ const ProductSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
     required: true,
+  },
+  subCategoryId : {
+    type : mongoose.Schema.Types.ObjectId,
+    ref : 'SubCategory',
+    required : false
   }
 },{timestamps : true});
 

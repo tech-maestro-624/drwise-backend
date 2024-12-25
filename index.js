@@ -75,7 +75,7 @@ app.use('/sale', require('./src/routes/saleRoutes'));
 app.use('/wallet', require('./src/routes/walletRoutes'));
 app.use('/referal', require('./src/routes/referralRoutes'));
 app.use('/affiliate', require('./src/routes/affiliateRoutes'));
-
+app.use('/subcategory', require('./src/routes/subCategoryRoutes'));
 
 app.get('/', (req, res) => {
   res.send('API is running...');

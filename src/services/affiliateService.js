@@ -49,8 +49,6 @@ const getAffiliateById = async (affiliateId) => {
 
 // Update an affiliate
 const updateAffiliate = async (affiliateId, updateData) => {
-  console.log(updateData);
-  
   try {
     const affiliate = await Affiliate.findByIdAndUpdate(affiliateId, updateData, { new: true });
     if (!affiliate) {

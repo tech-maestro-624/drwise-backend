@@ -3,10 +3,9 @@
 const productService = require('../services/productService');
 
 exports.createProduct = async (req, res) => {
-  const { name, description, categoryId, price,benefits } = req.body;
    
   try {
-    const product = await productService.createProduct(name, description, categoryId, price,benefits);
+    const product = await productService.createProduct(req.body);
     res.status(201).json({ message: 'Product created successfully', product });
   } catch (error) {
     console.error(error);
@@ -40,13 +39,10 @@ exports.getProductById = async (req, res) => {
 };
 
 exports.updateProduct = async (req, res) => {
-  console.log(req.body);
-  
   const { productId } = req.params;
-  const { name, description, categoryId,benefits } = req.body;
 
   try {
-    const product = await productService.updateProduct(productId, name, description, categoryId,benefits);
+    const product = await productService.updateProduct(productId, req.body);
     res.status(200).json({ message: 'Product updated successfully', product });
   } catch (error) {
     console.error(error);
@@ -67,8 +63,6 @@ exports.deleteProduct = async (req, res) => {
 };
 
 exports.getProductsByCategoryId = async (req, res) => {
-  console.log(req.params);
-  
   const { categoryId } = req.params;
 
   try {

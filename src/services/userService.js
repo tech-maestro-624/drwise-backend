@@ -5,6 +5,7 @@ const Role = require('../models/Role')
 const Lead = require('../models/Lead');
 const { sendOtp } = require('../controllers/authController');
 const sendPushNotification = require("../utils/pushNotification");
+const Wallet = require('../models/Wallet')
 
 exports.get = async(query={}) => {
     try {
@@ -182,3 +183,26 @@ exports.create = async(data) => {
     throw error;
   }
 }
+
+exports.delete = async (id) => {
+  try {
+    // Find the user by ID
+    const user = await User.findById(id);
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Check if the user has an associated wallet and delete it
+    if (user.wallet) {
+      await Wallet.findByIdAndDelete(user.wallet);
+    }
+
+    // Delete the user
+    const deletedUser = await User.findByIdAndDelete(id);
+
+    return deletedUser;
+  } catch (error) {
+    throw error;
+  }
+};
