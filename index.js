@@ -25,10 +25,10 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
-  cookie: { 
+ cookie: { 
     httpOnly: true,
-    secure: true,  // true in production (requires HTTPS)
-    sameSite: 'none', // 'none' requires secure and HTTPS in production
+    secure: isProduction,  // true in production (requires HTTPS)
+    sameSite: isProduction ? 'none' : 'lax', // 'none' requires secure and HTTPS in production
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   }
 }));
