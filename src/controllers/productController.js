@@ -23,6 +23,18 @@ exports.getAllProducts = async (req, res) => {
   }
 };
 
+exports.getProductsBySubCategory = async(req, res)=>{
+  console.log(req.params);
+  
+  try {
+    const products = await productService.getProductsBySubCategory(req.params.id)
+    res.status(200).json(products)
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Failed to retrieve products' });
+  }
+}
+
 exports.getProductById = async (req, res) => {
   const { productId } = req.params;
 

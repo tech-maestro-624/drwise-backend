@@ -12,6 +12,10 @@ async function getAllProducts() {
   return Product.find({}).populate('categoryId subCategoryId');
 }
 
+async function getProductsBySubCategory(id) {
+  return Product.find({subCategoryId : id}).populate('categoryId subCategoryId');
+}
+
 async function getProductById(productId) {
   return Product.findById(productId).populate('categoryId subCategoryId');
 }
@@ -48,5 +52,6 @@ module.exports = {
   getProductById,
   updateProduct,
   deleteProduct,
-  getProductsByCategoryId
+  getProductsByCategoryId,
+  getProductsBySubCategory
 };

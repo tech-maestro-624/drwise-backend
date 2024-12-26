@@ -67,7 +67,8 @@ const UserSchema = new mongoose.Schema({
     ref: 'User',
     required: false,
     default: null
-  }
+  },
+  active : {type :Boolean, default: true},
 }, { timestamps: true });
 
 

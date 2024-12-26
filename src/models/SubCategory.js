@@ -7,7 +7,11 @@ const subCategorySchema = new Schema({
         ref : 'Category',
         required : true
     },
-    icon : String
+    icon : String,
+    name : String,
+    description: {
+        type: String,
+      },
 },{timestamps : true})
 
 module.exports = mongoose.model('SubCategory',subCategorySchema)
