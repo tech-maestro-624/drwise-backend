@@ -21,9 +21,6 @@ connectDB();
 console.log(process.env.MONGO_URI)
 app.set('trust proxy', 1);
 
-
-
-
 // Generate CRUD permissions for all models
 generateCRUDPermissions().then(() => {
   console.log('CRUD permissions generated');
@@ -52,9 +49,7 @@ app.use(cors({
   ],
   credentials: true
 }));
-// Passport middleware
-app.use(passport.initialize());
-app.use(passport.session());
+
 app.use(cookieParser());
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -65,11 +60,15 @@ app.use(session({
   store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
   cookie: { 
     httpOnly: true,
-    secure: isProduction,  // true in production (requires HTTPS)
+    secure: true,  // true in production (requires HTTPS)
     sameSite: isProduction ? 'none' : 'lax', // 'none' requires secure and HTTPS in production
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   }
 }));
+// Passport middleware
+app.use(passport.initialize());
+app.use(passport.session());
+
 // Routes
 app.use('/auth', require('./src/routes/authRoutes'));
 app.use('/categories', require('./src/routes/categoryRoutes'));
