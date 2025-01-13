@@ -171,6 +171,7 @@ exports.update = async(id,data) => {
     const user= await User.findByIdAndUpdate(id,data,{new : true})
     return user
   } catch (error) {
+    console.log(error);
     throw error
   }
 }
