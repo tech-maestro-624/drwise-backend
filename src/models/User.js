@@ -73,6 +73,7 @@ const UserSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 
+
 UserSchema.pre('save', async function (next) {
   if (this.isNew && !this.refCode) {
     try {
@@ -116,5 +117,7 @@ UserSchema.post('save', async function (doc) {
     console.error('Error creating wallet for user:', error);
   }
 });
+
+
 
 module.exports = mongoose.model('User', UserSchema);
