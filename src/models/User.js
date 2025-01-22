@@ -76,14 +76,12 @@ const UserSchema = new mongoose.Schema({
 UserSchema.pre('save', async function (next) {
   if (this.isNew && !this.refCode) {
     try {
-      // Dynamically import nanoid
       const { customAlphabet } = await import('nanoid');
-      const nanoid = customAlphabet('1234567890abcdef', 6);
+      const nanoid = customAlphabet('1234567890abcdef', 4);
       const uniqueId = nanoid();
-
       const firstName = this.name ? this.name.split(' ')[0] : 'user';
-
-      this.refCode = `${firstName.toLowerCase()}-${uniqueId}`;
+      const prefix = firstName.substring(0, 4).toLowerCase();
+      this.refCode = `${prefix}-${uniqueId}`;
     } catch (error) {
       return next(error);
     }
@@ -91,25 +89,24 @@ UserSchema.pre('save', async function (next) {
   next();
 });
 
+
 UserSchema.post('save', async function (doc) {
   try {
     if (!doc.wallet) {
-      // Create a wallet for the user
       const wallet = new Wallet({
         user: doc._id,
-        balance: 0, // Default balance
+        balance: 0, 
       });
       const savedWallet = await wallet.save();
 
-      // Update the user with the wallet ID
       doc.wallet = savedWallet._id;
-      await doc.save(); // Save the user with the new wallet reference
+      await doc.save(); 
       const config = await Configuration.findOne({ key: 'JOINING_BONUS' });
       savedWallet.balance += config.value;
       const joiningBonusTransaction = {
         type: 'credit',
         amount: config.value,  
-        description: 'Joining Bonus',
+        description: `Congratulations for sign up, here is your joining Bonus of ${config.value} coins`,
         date: new Date(),
       }
       savedWallet.transactions.push(joiningBonusTransaction);
