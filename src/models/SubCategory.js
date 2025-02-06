@@ -12,6 +12,7 @@ const subCategorySchema = new Schema({
     description: {
         type: String,
       },
+      image : String
 },{timestamps : true})
 
 module.exports = mongoose.model('SubCategory',subCategorySchema)

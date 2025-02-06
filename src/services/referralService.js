@@ -1,76 +1,98 @@
-// services/referralService.js
-
 const Lead = require('../models/Lead');
 const Wallet = require('../models/Wallet');
 const Sale = require('../models/Sale');
 const { getConfig } = require('./configurationService');
-const User = require('../models/User')
+const User = require('../models/User');
+const walletService = require('../services/walletService');
 
+/**
+ * Example placeholder for createReferral logic
+ */
+async function createReferral(referrerId, referredName, referredPhoneNumber) {
+  // Implement your logic of storing a new Lead
+  const lead = new Lead({
+    referrer: referrerId,
+    name: referredName,
+    phoneNumber: referredPhoneNumber,
+    status: 'New',
+  });
+  await lead.save();
+
+  return { lead };
+}
+
+/**
+ * Convert lead => mark lead as converted, create a Sale, 
+ * credit the referrer with referral bonus, 
+ * handle second-degree referral if config is present.
+ */
 async function convertLead(leadId, productId, price, conversionAmt, refBonus, categoryId) {
   const lead = await Lead.findByIdAndUpdate(leadId, { status: 'Converted' }, { new: true });
   if (!lead) {
     throw new Error('Lead not found');
   }
 
-  // Create a new Sale record
+  // 1) Create a new Sale record
   const sale = new Sale({
     lead: leadId,
     product: productId,
     price,
     referrer: lead.referrer,
-    referralBonus : refBonus, 
-    categoryId:categoryId
+    referralBonus: refBonus,
+    categoryId: categoryId,
   });
-
   await sale.save();
 
-  // Update the referrer's wallet
-  const wallet = await Wallet.findOne({ user: lead.referrer });
+  // 2) Ensure the referrer has a Wallet
+  let wallet = await Wallet.findOne({ user: lead.referrer });
   if (!wallet) {
-    throw new Error('Wallet not found');
+    throw new Error('Wallet not found for the referrer');
   }
 
-  // Add the referral bonus to the referrer's wallet
-  await wallet.addTransaction('credit', Number(refBonus), `Referral bonus from sale conversion of value: ${conversionAmt}`);
+  // 3) Credit the referral bonus to the referrer
+  await walletService.creditWallet(
+    lead.referrer,
+    Number(refBonus),
+    `Referral bonus from sale conversion of value: ${conversionAmt}`
+  );
 
-  const firstDegUser = await User.findById(lead.referrer)
-  console.log("2nd",firstDegUser.referredBy)
-  // Handle second-degree referral bonus
-  const secondDegUser = await User.findById(firstDegUser.referredBy);
-  if (!secondDegUser) {
-    throw new Error('Second-degree user not found');
-  }
+  // 4) Handle second-degree referral
+  const firstDegUser = await User.findById(lead.referrer);
+  const secondDegUserId = firstDegUser?.referredBy;
+  if (secondDegUserId) {
+    const secondDegUser = await User.findById(secondDegUserId);
+    if (secondDegUser) {
+      const secondDegWallet = await Wallet.findOne({ user: secondDegUser._id });
+      if (secondDegWallet) {
+        // Fetch configuration for second-degree referral
+        const secondDegConfig = await getConfig('SECOND_DEGREE_VALUATION');
+        if (secondDegConfig) {
+          let secondDegBonus;
+          if (secondDegConfig.type === 'percentage') {
+            secondDegBonus = conversionAmt * (secondDegConfig.value / 100);
+          } else if (secondDegConfig.type === 'fixed') {
+            secondDegBonus = secondDegConfig.value;
+          } else {
+            throw new Error('Invalid second-degree bonus configuration');
+          }
 
-  const secondDegWallet = await Wallet.findOne({ user: secondDegUser._id });
-
-  if (!secondDegWallet) {
-    return { lead, sale, wallet, secondDegWallet };
-  }
-
-  // Fetch configuration for second-degree referral bonus
-  const secondDegConfig = await getConfig('SECOND_DEGREE_VALUATION'); // Assuming it returns { type: 'percentage' or 'fixed', value: Number }
-  if (secondDegConfig !== undefined) {
-    let secondDegBonus;
-
-    if (secondDegConfig.type === 'percentage') {
-      // Calculate bonus as a percentage of conversionAmt
-      secondDegBonus = conversionAmt * (secondDegConfig.value / 100);
-    } else if (secondDegConfig.type === 'fixed') {
-      // Fixed amount as specified in configuration
-      secondDegBonus = secondDegConfig.value;
-    } else {
-      throw new Error('Invalid second-degree bonus configuration');
+          // Credit second-degree bonus
+          await walletService.creditWallet(
+            secondDegUser._id,
+            secondDegBonus,
+            `Second-degree referral bonus from sale conversion of value: ${conversionAmt}`
+          );
+        } else {
+          throw new Error('Second-degree bonus configuration not found');
+        }
+      }
     }
-
-    // Add the second-degree referral bonus to the second-degree user’s wallet
-    await secondDegWallet.addTransaction('credit', secondDegBonus, `Second-degree referral bonus from sale conversion of value: ${conversionAmt}`);
-  } else {
-    throw new Error('Second-degree bonus configuration not found');
   }
 
-  return { lead, sale, wallet, secondDegWallet };
+  return { lead, sale };
 }
 
 module.exports = {
+  createReferral,
   convertLead,
 };

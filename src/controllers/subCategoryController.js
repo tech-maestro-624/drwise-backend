@@ -22,8 +22,7 @@ const createSubCategory = async (req, res) => {
 // Get SubCategories with pagination and filtering
 const getSubCategories = async (req, res) => {
   try {
-    const query = req.query;
-    const result = await subCategoryService.get(query);
+    const result = await subCategoryService.get(req.query);
     res.status(200).json({
       success: true,
       data: result.leads,

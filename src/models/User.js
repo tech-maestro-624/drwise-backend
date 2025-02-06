@@ -2,6 +2,7 @@
 const mongoose = require('mongoose');
 const Wallet = require('./Wallet');
 const Configuration = require('./Configuration');
+
 // const customAlphabet  = require('nanoid');
 const UserSchema = new mongoose.Schema({
   phoneNumber: {
@@ -101,22 +102,32 @@ UserSchema.post('save', async function (doc) {
       const savedWallet = await wallet.save();
 
       doc.wallet = savedWallet._id;
-      await doc.save(); 
+      await doc.save();
+      
       const config = await Configuration.findOne({ key: 'JOINING_BONUS' });
-      savedWallet.balance += config.value;
-      const joiningBonusTransaction = {
-        type: 'credit',
-        amount: config.value,  
-        description: `Congratulations for sign up, here is your joining Bonus of ${config.value} coins`,
+      const bonusAmount = config?.value || 0;
+      savedWallet.balance += bonusAmount;
+      await savedWallet.save();
+
+      const Transaction = require('./Transaction'); 
+      const joiningBonusTransaction = new Transaction({
+        wallet: savedWallet._id,
+        userId: doc._id,
+        type: 'credit', 
+        amount: bonusAmount,
         date: new Date(),
-      }
-      savedWallet.transactions.push(joiningBonusTransaction);
+        description: `Congratulations for sign up, here is your joining Bonus of ${bonusAmount} coins`,
+      });
+      const savedTransaction = await joiningBonusTransaction.save();
+
+      savedWallet.transactions.push(savedTransaction._id);
       await savedWallet.save();
     }
   } catch (error) {
     console.error('Error creating wallet for user:', error);
   }
 });
+
 
 
 

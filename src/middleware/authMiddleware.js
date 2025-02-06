@@ -1,64 +1,90 @@
-// middlewares/authMiddleware.js
-const User = require('../models/User')
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-exports.isAuthenticated = (req, res, next) => {
-    if (req.isAuthenticated()) {
-      return next();
+/**
+ * Middleware to verify JWT and attach the user object to req.user.
+ */
+exports.isAuthenticated = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ message: 'No token provided' });
     }
-    res.status(401).json({ message: 'Unauthorized' });
-  };
-  
 
-  // middlewares/authMiddleware.js
+    // Expect header format: "Bearer <token>"
+    const token = authHeader.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Invalid token format' });
+    }
 
-// exports.checkRoleOrPermission = (requiredPermissions) => {
-//   return (req, res, next) => {
-//     if (!req.isAuthenticated()) {
-//       return res.status(401).json({ message: 'Unauthorized' });
-//     }
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (error) {
+      return res.status(401).json({
+        message: 'Authentication failed - token invalid or expired'
+      });
+    }
 
-//     const userRoles = req?.user?.roles?.map(role => role.name);
-//     const userRolePermissions = req?.user?.roles?.flatMap(role => role?.permissions.map(permission => permission.name));
-//     const userDirectPermissions = req?.user?.permissions.map(permission => permission.name);
+    if (!decoded || !decoded.userId) {
+      return res.status(401).json({ message: 'Invalid token payload' });
+    }
 
-//     // Combine role-based and direct permissions
-//     const userPermissions = new Set([...userRolePermissions, ...userDirectPermissions]);
+    const user = await User.findById(decoded.userId)
+      .populate('roles')
+      .populate('permissions');
 
-//     const hasPermission = requiredPermissions.some(permission => userPermissions.has(permission) || userRoles.includes(permission));
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
 
-//     if (hasPermission) {
-//       return next();
-//     }
+    req.user = user;
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: 'Authentication failed' });
+  }
+};
 
-//     return res.status(403).json({ message: 'Forbidden' });
-//   };
-// };
-
-exports.checkRoleOrPermission = (permission) => {
+/**
+ * Middleware to check if the authenticated user has the specified permission or role.
+ *
+ * @param {String} requiredPermission - The permission name required.
+ */
+exports.checkRoleOrPermission = (requiredPermission) => {
   return async (req, res, next) => {
     try {
-      const user = await User.findById(req.user._id).populate('roles').populate('permissions');
-      const userPermissions = user.permissions;
-      // Check direct permissions
-      if (userPermissions.some((perm) => perm.name === permission)) {
+      const user = req.user; // Set by isAuthenticated middleware
+      if (!user) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      // Automatically allow if the user has an admin role.
+      if (user.roles && user.roles.some(role => role.name.toLowerCase() === 'admin')) {
         return next();
       }
 
-      // Check role-based permissions
-      const roles = user.roles;
-      for (const role of roles) {
-        const roleWithPermissions = await role.populate('permissions');
-        if (roleWithPermissions.permissions.some((perm) => perm.name === permission)) {
-          return next();
+      // Check if the user has the required permission directly.
+      if (user.permissions && user.permissions.some(perm => perm.name === requiredPermission)) {
+        return next();
+      }
+
+      // Check role-based permissions:
+      if (user.roles && user.roles.length > 0) {
+        for (const role of user.roles) {
+          // Populate permissions with only the 'name' field.
+          await role.populate({ path: 'permissions', select: 'name' });
+          if (role.permissions && role.permissions.some(perm => perm.name === requiredPermission)) {
+            return next();
+          }
         }
       }
-      return res.status(403).json({ message: 'Forbidden' });
-    } catch (err) {
-      console.log(err)
 
+      return res.status(403).json({ message: 'Forbidden' });
+    } catch (error) {
+      console.error('Role/Permission Check Error:', error);
       return res.status(500).json({ message: 'Server Error' });
     }
   };
 };
 
-  

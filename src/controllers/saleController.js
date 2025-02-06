@@ -27,6 +27,8 @@ async function getSaleById(req, res) {
 
 // Get all sales
 async function getAllSales(req, res) {
+  console.log(req.query);
+  
   try {
     const sales = await saleService.getAllSales(req.query);
     res.json(sales);
