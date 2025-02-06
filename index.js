@@ -1,33 +1,26 @@
 // app.js
 
 const express = require('express');
-const session = require('express-session');
-const passport = require('./src/config/passport');
 const connectDB = require('./src/config/db');
-const MongoStore = require('connect-mongo');
-const dotenv = require('dotenv')
-dotenv.config()
-const cookieParser = require('cookie-parser');
-const bodyParser = require('body-parser')
+const dotenv = require('dotenv');
+dotenv.config();
+const bodyParser = require('body-parser');
 const cors = require('cors');
-const generateCRUDPermissions = require('./src/utils/generatePermissions')
-const app = express();
+const generateCRUDPermissions = require('./src/utils/generatePermissions');
 
-// Connect to database
+const app = express();
 connectDB();
 
-// Middleware
-
-console.log(process.env.MONGO_URI)
-app.set('trust proxy', 1);
-
 // Generate CRUD permissions for all models
-generateCRUDPermissions().then(() => {
-  console.log('CRUD permissions generated');
-}).catch(err => {
-  console.error('Error generating permissions:', err);
-});
+generateCRUDPermissions()
+  .then(() => {
+    console.log('CRUD permissions generated');
+  })
+  .catch(err => {
+    console.error('Error generating permissions:', err);
+  });
 
+// Middleware
 app.use(bodyParser.json({ limit: '50mb' }));
 
 app.use(cors({
@@ -44,30 +37,11 @@ app.use(cors({
     'http://192.168.0.25:3000',
     'http://192.168.1.6:3000',
     'http://192.168.1.6:3000/',
-    "http://localhost:62448",
+    'http://localhost:62448',
     'https://drwise-internal.vercel.app',
   ],
-  credentials: true
+  credentials: true,
 }));
-
-app.use(cookieParser());
-
-const isProduction = process.env.NODE_ENV === 'production';
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
-  cookie: { 
-    httpOnly: true,
-    secure: true,  // true in production (requires HTTPS)
-    sameSite: isProduction ? 'none' : 'lax', // 'none' requires secure and HTTPS in production
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  }
-}));
-// Passport middleware
-app.use(passport.initialize());
-app.use(passport.session());
 
 // Routes
 app.use('/auth', require('./src/routes/authRoutes'));
@@ -84,6 +58,8 @@ app.use('/wallet', require('./src/routes/walletRoutes'));
 app.use('/referal', require('./src/routes/referralRoutes'));
 app.use('/affiliate', require('./src/routes/affiliateRoutes'));
 app.use('/subcategory', require('./src/routes/subCategoryRoutes'));
+app.use('/transaction', require('./src/routes/transactionRoutes'));
+
 
 app.get('/', (req, res) => {
   res.send('API is running...');

@@ -1,5 +1,3 @@
-// controllers/referralController.js
-
 const referralService = require('../services/referralService');
 
 exports.createReferral = async (req, res) => {
@@ -16,9 +14,9 @@ exports.createReferral = async (req, res) => {
 };
 
 exports.convertLead = async (req, res) => {
-  const { leadId, productId, price,conversionAmt,refBonus, categoryId,  } = req.body;
+  const { leadId, productId, price, conversionAmt, refBonus, categoryId } = req.body;
   try {
-    const result = await referralService.convertLead(leadId, productId, price,conversionAmt,refBonus, categoryId);
+    const result = await referralService.convertLead(leadId, productId, price, conversionAmt, refBonus, categoryId);
     res.status(200).json({ message: 'Lead converted successfully, sale recorded, and bonus awarded', ...result });
   } catch (error) {
     console.error(error);

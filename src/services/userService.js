@@ -24,7 +24,6 @@ exports.get = async(query={}) => {
                                 .limit(limit)
                                 .sort({createdAt : -1})
                                 .populate('wallet')
-                                console.log(data);
                                 
         const total = await User.countDocuments(query.condition);
         return {

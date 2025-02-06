@@ -24,8 +24,6 @@ exports.getAllProducts = async (req, res) => {
 };
 
 exports.getProductsBySubCategory = async(req, res)=>{
-  console.log(req.params);
-  
   try {
     const products = await productService.getProductsBySubCategory(req.params.id)
     res.status(200).json(products)

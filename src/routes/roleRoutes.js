@@ -3,13 +3,13 @@
 const express = require('express');
 const router = express.Router();
 const roleController = require('../controllers/roleController');
-const authMiddleware = require('../middleware/authMiddleware');
+const {isAuthenticated ,checkRoleOrPermission} = require('../middleware/authMiddleware');
 
 // Role management routes
-router.post('/', authMiddleware.checkRoleOrPermission('CREATE_ROLE'), roleController.createRole);
-router.get('/',authMiddleware.checkRoleOrPermission('READ_ROLE'), roleController.getAllRoles);
-router.get('/:roleId',authMiddleware.checkRoleOrPermission('READ_ROLE'), roleController.getRoleById);
-router.put('/:roleId',authMiddleware.checkRoleOrPermission("UPDATE_ROLE"), roleController.updateRole);
-router.delete('/:roleId', authMiddleware.checkRoleOrPermission("DELETE_ROLE"), roleController.deleteRole);
+router.post('/',isAuthenticated,  checkRoleOrPermission('CREATE_ROLE'), roleController.createRole);
+router.get('/',isAuthenticated, checkRoleOrPermission('READ_ROLE'), roleController.getAllRoles);
+router.get('/:roleId',isAuthenticated, checkRoleOrPermission('READ_ROLE'), roleController.getRoleById);
+router.put('/:roleId',isAuthenticated, checkRoleOrPermission("UPDATE_ROLE"), roleController.updateRole);
+router.delete('/:roleId', isAuthenticated, checkRoleOrPermission("DELETE_ROLE"), roleController.deleteRole);
 
 module.exports = router;
