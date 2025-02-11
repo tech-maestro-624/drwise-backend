@@ -2,8 +2,8 @@
 const mongoose = require('mongoose');
 const Wallet = require('./Wallet');
 const Configuration = require('./Configuration');
+const Transaction = require('./Transaction');
 
-// const customAlphabet  = require('nanoid');
 const UserSchema = new mongoose.Schema({
   phoneNumber: {
     type: String,
@@ -20,23 +20,23 @@ const UserSchema = new mongoose.Schema({
   },
   name: String,
   email: String,
-  otp: {
-    type: String,
-    required: false,
-  },
+  otp: String,
   otpExpires: {
     type: Date,
-    required: true,
-    default: Date.now()
+    default: Date.now,
   },
-  roles: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Role',
-  }],
-  permissions: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Permission',
-  }],
+  roles: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Role',
+    },
+  ],
+  permissions: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Permission',
+    },
+  ],
   wallet: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Wallet',
@@ -44,38 +44,40 @@ const UserSchema = new mongoose.Schema({
   referredBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: false,
-    default: null
+    default: null,
   },
   pushNotificationToken: String,
   withdrawalMethod: String,
   withdrawalDetails: {
     type: mongoose.Schema.Types.Mixed,
-    required: false,
-    default: {}
+    default: {},
   },
   verified: {
     type: Boolean,
-    default: false
+    default: false,
   },
   refCode: String,
-  acceptedPolicies : {
-    type : Boolean,
-    default : false
+  acceptedPolicies: {
+    type: Boolean,
+    default: false,
   },
   ambassadorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: false,
-    default: null
+    default: null,
   },
-  active : {type :Boolean, default: true},
-  image : String
+  active: { type: Boolean, default: true },
+  image: String,
+
+  referralBonusProcessed: {
+    type: Boolean,
+    default: false,
+  },
 }, { timestamps: true });
 
-
-
 UserSchema.pre('save', async function (next) {
+  this._wasNew = this.isNew;
+
   if (this.isNew && !this.refCode) {
     try {
       const { customAlphabet } = await import('nanoid');
@@ -91,44 +93,80 @@ UserSchema.pre('save', async function (next) {
   next();
 });
 
-
 UserSchema.post('save', async function (doc) {
+  if (!this._wasNew) {
+    return;
+  }
+
+
   try {
+    // 1) Possibly load a JOINING_BONUS from config
+    const config = await Configuration.findOne({ key: 'JOINING_BONUS' });
+    const joiningBonus = Number(config?.value) || 0;
+
+    // 2) Create the new user’s wallet if needed
+    let userWallet;
     if (!doc.wallet) {
-      const wallet = new Wallet({
+      userWallet = new Wallet({
         user: doc._id,
-        balance: 0, 
+        balance: 0,
+        transactions: [],
       });
-      const savedWallet = await wallet.save();
+      await userWallet.save();
 
-      doc.wallet = savedWallet._id;
-      await doc.save();
-      
-      const config = await Configuration.findOne({ key: 'JOINING_BONUS' });
-      const bonusAmount = config?.value || 0;
-      savedWallet.balance += bonusAmount;
-      await savedWallet.save();
+      await mongoose.model('User').updateOne(
+        { _id: doc._id },
+        { wallet: userWallet._id }
+      );
+    } else {
+      userWallet = await Wallet.findById(doc.wallet);
+    }
 
-      const Transaction = require('./Transaction'); 
+    // 3) If there's a joining bonus, credit to the new user’s wallet
+    if (userWallet && joiningBonus > 0) {
+      userWallet.balance += joiningBonus;
+      await userWallet.save();
+
       const joiningBonusTransaction = new Transaction({
-        wallet: savedWallet._id,
+        wallet: userWallet._id,
         userId: doc._id,
-        type: 'credit', 
-        amount: bonusAmount,
+        type: 'JOINING_BONUS',
+        amount: joiningBonus,
         date: new Date(),
-        description: `Congratulations for sign up, here is your joining Bonus of ${bonusAmount} coins`,
+        description: `Welcome bonus of ${joiningBonus} coins.`,
       });
-      const savedTransaction = await joiningBonusTransaction.save();
+      await joiningBonusTransaction.save();
 
-      savedWallet.transactions.push(savedTransaction._id);
-      await savedWallet.save();
+      userWallet.transactions.push(joiningBonusTransaction._id);
+      await userWallet.save();
+    }
+
+    if (doc.referredBy && !doc.referralBonusProcessed) {
+      const referralBonus = joiningBonus;
+
+      let referrerWallet = await Wallet.findOne({ user: doc.referredBy });
+      if (!referrerWallet) {
+        referrerWallet = new Wallet({
+          user: doc.referredBy,
+          balance: 0,
+          transactions: [],
+        });
+        await referrerWallet.save();
+      }
+
+      if (referralBonus > 0) {
+        await referrerWallet.addLockedReferral(doc._id, referralBonus, doc._id);
+      }
+
+      await mongoose.model('User').updateOne(
+        { _id: doc._id },
+        { referralBonusProcessed: true }
+      );
     }
   } catch (error) {
-    console.error('Error creating wallet for user:', error);
+    console.error('Error creating wallet or processing bonus:', error);
   }
 });
-
-
 
 
 module.exports = mongoose.model('User', UserSchema);

@@ -1,3 +1,4 @@
+// models/Transaction.js
 const mongoose = require('mongoose');
 
 const TransactionSchema = new mongoose.Schema(
@@ -14,7 +15,15 @@ const TransactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['credit', 'debit', 'JOINING_BONUS', 'REFERRAL_BONUS', 'CONVERSION_BONUS'],
+      enum: [
+        'credit',
+        'debit',
+        'JOINING_BONUS',
+        'REFERRAL_BONUS',
+        'CONVERSION_BONUS',
+        'LOCKED_REFERRAL_BONUS',
+        'UNLOCK_REFERRAL_BONUS',
+      ],
       required: true,
     },
     amount: {
