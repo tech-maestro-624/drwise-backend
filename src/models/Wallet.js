@@ -1,8 +1,29 @@
-// models/Wallet.js
 const mongoose = require('mongoose');
-// We only import Transaction if we want to use it inside the .methods. 
-// Alternatively, we can receive it as a parameter.
 const Transaction = require('./Transaction');
+
+const LockedReferralSchema = new mongoose.Schema({
+  referredUser: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  amount: {
+    type: Number,
+    required: true,
+  },
+  locked: {
+    type: Boolean,
+    default: true,
+  },
+  lockedAt: {
+    type: Date,
+    default: Date.now,
+  },
+  unlockedAt: {
+    type: Date,
+    default: null,
+  },
+});
 
 const WalletSchema = new mongoose.Schema(
   {
@@ -21,7 +42,11 @@ const WalletSchema = new mongoose.Schema(
       default: 0,
       required: true,
     },
-    // Note: We store array of ObjectIds referencing the Transaction model
+    lockedRefBonus: {
+      type: Number,
+      default: 0,
+    },
+    lockedReferrals: [LockedReferralSchema],
     transactions: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -32,16 +57,6 @@ const WalletSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-/**
- * Adds a transaction to this wallet.
- *  - `type` can be 'credit', 'debit', 'JOINING_BONUS', etc.
- *  - `amount` is how much to add or subtract.
- *  - `description` is optional text.
- *  - `userId` is the user responsible for or associated with this transaction.
- *
- * This creates and saves a Transaction document, then pushes its _id to `this.transactions`.
- */
-// models/Wallet.js
 WalletSchema.methods.addTransaction = async function (
   type,
   amount,
@@ -49,7 +64,12 @@ WalletSchema.methods.addTransaction = async function (
   userId,
   useRefBonus = false
 ) {
-  if (type === 'credit' || type === 'JOINING_BONUS' || type === 'REFERRAL_BONUS') {
+  if (
+    type === 'credit' ||
+    type === 'JOINING_BONUS' ||
+    type === 'REFERRAL_BONUS' ||
+    type === 'credit'
+  ) {
     if (useRefBonus) {
       this.refBonus += Number(amount);
     } else {
@@ -59,7 +79,6 @@ WalletSchema.methods.addTransaction = async function (
     this.balance -= Number(amount);
   }
 
-  // 1) Create the Transaction document
   const newTransaction = await Transaction.create({
     wallet: this._id,
     userId,
@@ -70,21 +89,72 @@ WalletSchema.methods.addTransaction = async function (
   });
 
   this.transactions.push(newTransaction._id);
-
   await this.save();
 
   return newTransaction;
 };
 
+WalletSchema.methods.addLockedReferral = async function (
+  referredUserId,
+  amount,
+  referredUserName
+) {
+  this.lockedReferrals.push({
+    referredUser: referredUserId,
+    amount,
+    locked: true,
+    lockedAt: new Date(),
+  });
 
-WalletSchema.methods.transferReferralBonusToBalance = async function () {
-  this.balance += this.refBonus;
-  this.refBonus = 0;
+  this.lockedRefBonus += amount;
   await this.save();
+
+  const lockedReferralTx = await Transaction.create({
+    wallet: this._id,
+    userId: this.user,
+    type: 'LOCKED_REFERRAL_BONUS', // or "LOCKED_REFERRAL_BONUS", depending on your logic
+    amount,
+    date: new Date(),
+    description: `Locked referral bonus for user ${referredUserName || referredUserId}`,
+  });
+
+  this.transactions.push(lockedReferralTx._id);
+  await this.save();
+
+  return lockedReferralTx;
 };
 
-module.exports = mongoose.model('Wallet', WalletSchema);
+WalletSchema.methods.unlockReferralForUser = async function (
+  referredUserId,
+  referredUserName
+) {
+  const lockedItem = this.lockedReferrals.find(
+    (item) =>
+      item.locked &&
+      item.referredUser.toString() === referredUserId.toString()
+  );
+  if (!lockedItem) {
+    return null;
+  }
 
+  lockedItem.locked = false;
+  lockedItem.unlockedAt = new Date();
+  this.balance += lockedItem.amount;
+  this.lockedRefBonus -= lockedItem.amount;
 
+  const unlockTx = await Transaction.create({
+    wallet: this._id,
+    userId: this.user,
+    type: 'UNLOCK_REFERRAL_BONUS', // or "UNLOCKED_REFERRAL_BONUS"
+    amount: lockedItem.amount,
+    date: new Date(),
+    description: `Unlocked referral bonus from user ${referredUserName || referredUserId}`,
+  });
+
+  this.transactions.push(unlockTx._id);
+  await this.save();
+
+  return unlockTx;
+};
 
 module.exports = mongoose.model('Wallet', WalletSchema);
