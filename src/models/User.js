@@ -155,7 +155,7 @@ UserSchema.post('save', async function (doc) {
       }
 
       if (referralBonus > 0) {
-        await referrerWallet.addLockedReferral(doc._id, referralBonus, doc._id);
+        await referrerWallet.addLockedReferral(doc._id, referralBonus, doc.name);
       }
 
       await mongoose.model('User').updateOne(

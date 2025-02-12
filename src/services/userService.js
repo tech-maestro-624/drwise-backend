@@ -24,6 +24,7 @@ exports.get = async(query={}) => {
                                 .limit(limit)
                                 .sort({createdAt : -1})
                                 .populate('wallet')
+                                .populate('referredBy')
                                 
         const total = await User.countDocuments(query.condition);
         return {
@@ -101,8 +102,6 @@ exports.register = async (roleName = 'DEFAULT_USER', data) => {
 
     // Generate and log OTP
     const otp = await sendOtp(user.phoneNumber);
-    console.log(`OTP for user ${user.phoneNumber}: ${otp}`);
-
   } catch (error) {
     throw new Error(`Error during registration: ${error.message}`);
   }

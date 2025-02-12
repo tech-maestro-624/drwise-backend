@@ -49,7 +49,6 @@ async function convertLead(
     throw new Error('No wallet found for first-degree referrer');
   }
 
-  // Using your walletService or direct method:
   await walletService.creditWallet(
     lead.referrer,
     Number(refBonus),
@@ -59,41 +58,54 @@ async function convertLead(
   // 2) Check for second-degree user
   const firstDegUser = await User.findById(lead.referrer);
   const secondDegUserId = firstDegUser?.referredBy;
+  console.log(secondDegUserId);
 
   if (secondDegUserId) {
     const secondDegUser = await User.findById(secondDegUserId);
+    console.log('secondDegUser :',secondDegUser);
+    
     if (secondDegUser) {
       const secondDegWallet = await Wallet.findOne({ user: secondDegUser._id });
       if (secondDegWallet) {
-        const secondDegConfig = await getConfig('SECOND_DEGREE_VALUATION');
-        if (!secondDegConfig) {
-          throw new Error('SECOND_DEGREE_VALUATION config not found');
-        }
-
-        let secondDegBonus = 0;
-        if (secondDegConfig.type === 'percentage') {
-          secondDegBonus = conversionAmt * (secondDegConfig.value / 100);
-        } else if (secondDegConfig.type === 'fixed') {
-          secondDegBonus = secondDegConfig.value;
-        } else {
-          throw new Error('Invalid second-degree bonus config');
-        }
-
         const maybeUnlocked = await secondDegWallet.unlockReferralForUser(
           firstDegUser._id,
           firstDegUser.name
         );
-        if (maybeUnlocked) {
-          console.log('Unlocked an existing locked referral for second-degree user:', maybeUnlocked);
-        }
+       
+      }
+      const ambassadorRoleConfig = await getConfig('AMBASSADOR_ROLE_ID');
+      console.log('ambassadorRoleConfig',ambassadorRoleConfig);
+      
 
-        const secondDegTx = await secondDegWallet.addTransaction(
-          'credit',
-          secondDegBonus,
-          `Second-degree referral bonus from user ${firstDegUser.name}`,
-          secondDegUser._id
-        );
-        console.log('Created second-degree bonus transaction:', secondDegTx);
+      if (!ambassadorRoleConfig) {
+        throw new Error('AMBASSADOR_ROLE_ID config not found');
+      }
+      const ambassadorRoleId = ambassadorRoleConfig;
+      console.log('ambassadorRoleId ;',ambassadorRoleId);
+      
+      if (secondDegUser.roles && secondDegUser.roles.includes(ambassadorRoleId)) {
+        if (secondDegWallet) {
+          const secondDegConfig = await getConfig('SECOND_DEGREE_VALUATION');
+          if (!secondDegConfig) {
+            throw new Error('SECOND_DEGREE_VALUATION config not found');
+          }
+          let secondDegBonus = 0;
+          if (secondDegConfig.type === 'percentage') {
+            secondDegBonus = conversionAmt * (secondDegConfig.value / 100);
+          } else if (secondDegConfig.type === 'fixed') {
+            secondDegBonus = secondDegConfig.value;
+          } else {
+            throw new Error('Invalid second-degree bonus config');
+          }
+          const secondDegTx = await secondDegWallet.addTransaction(
+            'credit',
+            secondDegBonus,
+            `Second-degree referral bonus from user ${firstDegUser.name}`,
+            secondDegUser._id
+          );
+        }
+      } else {
+        console.log(`User ${secondDegUser._id} is not an ambassador, skipping second-degree bonus.`);
       }
     }
   }

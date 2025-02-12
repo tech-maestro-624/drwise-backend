@@ -37,7 +37,6 @@ const createSubscription = async (userId,startDate,endDate, price) => {
         await subscription.save();
         return {subscription};
     } catch(error) {
-        console.log(error)
         throw error;
     }
 };
