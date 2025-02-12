@@ -43,7 +43,6 @@ async function creditWallet(userId, amount, description = 'Credit') {
   // 1) Always returns a valid wallet (auto-created if not found)
   const wallet = await getWalletByUserId(userId);
 
-  console.log('CREDIT WALLET for user:', userId, '| Found wallet:', wallet?._id);
 
   // 2) Increase balance
   wallet.balance += Number(amount);
@@ -59,8 +58,6 @@ async function creditWallet(userId, amount, description = 'Credit') {
   });
   await transaction.save();
 
-  console.log('Created transaction:', transaction);
-
   // 4) Ensure `wallet.transactions` is an array before pushing
   if (!Array.isArray(wallet.transactions)) {
     wallet.transactions = [];
@@ -70,7 +67,6 @@ async function creditWallet(userId, amount, description = 'Credit') {
   // 5) Save the updated wallet
   await wallet.save();
 
-  console.log('Wallet after credit:', wallet);
   return wallet;
 }
 

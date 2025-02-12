@@ -49,7 +49,6 @@ async function sendPushNotification(token, title, body, data) {
     try {
       let ticketChunk = await expo.sendPushNotificationsAsync(chunk);
       tickets.push(...ticketChunk);
-      console.log('Ticket Chunk:', ticketChunk);
     } catch (error) {
       console.error('Error sending notification:', error);
     }

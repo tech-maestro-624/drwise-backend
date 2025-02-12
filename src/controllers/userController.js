@@ -5,8 +5,6 @@ exports.get = async(req,res) => {
         const data = await userService.get(req.query)
         return res.status(200).json(data)
     } catch (error) {
-        console.log(error);
-        
         return res.status(400).json({error : error.message})
     }
 }

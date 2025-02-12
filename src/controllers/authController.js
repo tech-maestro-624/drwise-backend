@@ -59,8 +59,14 @@ exports.sendOtp = async (req, res) => {
 
   try {
     const user = await User.findOne({ phoneNumber });
+    console.log(user);
+    
     if (!user) {
       return res.status(400).json({ message: 'User does not exist. Please register first.' });
+    }
+
+    if (!user.active) {
+      return res.status(400).json({ message: 'Your account Deactivate, Contact Admin' });
     }
 
     const otp = crypto.randomInt(100000, 999999).toString();

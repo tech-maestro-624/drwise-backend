@@ -37,7 +37,6 @@ const ensurePermissions = async () => {
         });
         
         await existingPermission.save();
-        console.log(`Created permission: ${permissionName}`);
       }
 
       modelPermissions[modelName].push(existingPermission);

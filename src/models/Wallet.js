@@ -112,7 +112,7 @@ WalletSchema.methods.addLockedReferral = async function (
   const lockedReferralTx = await Transaction.create({
     wallet: this._id,
     userId: this.user,
-    type: 'LOCKED_REFERRAL_BONUS', // or "LOCKED_REFERRAL_BONUS", depending on your logic
+    type: 'LOCKED_REFERRAL_BONUS', 
     amount,
     date: new Date(),
     description: `Locked referral bonus for user ${referredUserName || referredUserId}`,
