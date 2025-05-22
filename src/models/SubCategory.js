@@ -11,8 +11,16 @@ const subCategorySchema = new Schema({
     name : String,
     description: {
         type: String,
-      },
-      image : String
+    },
+    image : String,
+    orderNo: {
+        type: Number,
+        required: true,
+        default: 0
+    }
 },{timestamps : true})
+
+// Ensure orderNo is unique within the parent category
+subCategorySchema.index({ parentCategory: 1, orderNo: 1 });
 
 module.exports = mongoose.model('SubCategory',subCategorySchema)
