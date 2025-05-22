@@ -59,6 +59,8 @@ app.use('/referal', require('./src/routes/referralRoutes'));
 app.use('/affiliate', require('./src/routes/affiliateRoutes'));
 app.use('/subcategory', require('./src/routes/subCategoryRoutes'));
 app.use('/transaction', require('./src/routes/transactionRoutes'));
+app.use('/subscription', require('./src/routes/subscriptionRoutes'));
+app.use('/reports', require('./src/routes/reportRoutes'));
 
 
 app.get('/', (req, res) => {
