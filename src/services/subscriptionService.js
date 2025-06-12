@@ -127,12 +127,3 @@ module.exports = {
     deleteSubscription,
     processWebhook
 };
-
-
-
-module.exports = {
-    createSubscription,
-    getSubscription,
-    updateSubscription,
-    deleteSubscription
-};
