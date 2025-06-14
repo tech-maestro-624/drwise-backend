@@ -10,10 +10,20 @@ const {
   deleteAffiliate,
 } = require("../controllers/affiliateController");
 
-router.get("/affiliates",isAuthenticated, checkRoleOrPermission('READ_AFFILATE'), getAllAffiliates);
-router.get("/affiliate/:id",isAuthenticated, checkRoleOrPermission("READ_AFFILATE"), getAffiliateById);
-router.post("/affiliate",isAuthenticated, checkRoleOrPermission("CREATE_AFFILATE"), createAffiliate);
-router.put("/affiliate/:id",isAuthenticated, checkRoleOrPermission("UPDATE_AFFILATE"), updateAffiliate);
-router.delete("/affiliate/:id",isAuthenticated, checkRoleOrPermission("DELETE_AFFILATE"), deleteAffiliate);
+router.get("/affiliates",isAuthenticated, 
+    // checkRoleOrPermission('READ_AFFILATE'), 
+    getAllAffiliates);
+router.get("/affiliate/:id",isAuthenticated, 
+    // checkRoleOrPermission("READ_AFFILATE"), 
+    getAffiliateById);
+router.post("/affiliate",isAuthenticated, 
+    // checkRoleOrPermission("CREATE_AFFILATE"), 
+    createAffiliate);
+router.put("/affiliate/:id",isAuthenticated, 
+    // checkRoleOrPermission("UPDATE_AFFILATE"), 
+    updateAffiliate);
+router.delete("/affiliate/:id",isAuthenticated, 
+    // checkRoleOrPermission("DELETE_AFFILATE"), 
+    deleteAffiliate);
 
 module.exports = router;
