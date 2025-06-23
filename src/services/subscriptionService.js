@@ -11,11 +11,12 @@ const razorpay = new Razorpay({
 const createSubscription = async (userId,startDate,endDate, price) => {
     try {
         const subscription = new Subscription({
-            ambassadorId : userId,
+            userId : userId,
             startDate,
             endDate,
             status: 'active',
             price,
+            subscriptionType : "ambassador"
         });
 
         // const order = await razorpay.orders.create({
@@ -31,12 +32,13 @@ const createSubscription = async (userId,startDate,endDate, price) => {
         //         whatsapp: true
         //     }
         // });
-
-
         // subscription.orderId = order.id;
         await subscription.save();
         return {subscription};
     } catch(error) {
+      
+        console.log("error :",error);
+        
         throw error;
     }
 };
