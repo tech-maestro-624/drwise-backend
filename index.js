@@ -25,20 +25,8 @@ app.use(bodyParser.json({ limit: '50mb' }));
 
 app.use(cors({
   origin: [
-    'http://172.20.29.254:3000',
-    'http://localhost:3000',
-    'https://localhost:3000',
-    'https://192.168.2.7:3001',
-    'http://192.168.2.7:3001',
-    'https://192.168.2.7:3000',
-    'http://192.168.2.7:3000',
-    'https://localhost:3001',
-    'http://internal.local:3001',
-    'http://192.168.0.25:3000',
-    'http://192.168.1.6:3000',
-    'http://192.168.1.6:3000/',
-    'http://localhost:62448',
-    'https://drwise-internal.vercel.app',
+    'https://app.dr-wise.in',
+    'https://drwise-internal.vercel.app'
   ],
   credentials: true,
 }));
