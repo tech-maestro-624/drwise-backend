@@ -14,8 +14,15 @@ const createSubscription = async (req, res) => {
 const getAllSubscriptions = async (req, res) => {
   try {
     const result = await subscriptionService.getAllSubscriptions(req.query);
-    res.status(200).json({ success: true, ...result });
+    res.status(200).json({
+      success: true,
+      data: result.subscriptions,
+      total: result.total,
+      page: result.page,
+      pages: result.pages
+    });
   } catch (error) {
+    console.error('Error in getAllSubscriptions:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 };
@@ -64,11 +71,49 @@ const checkExpiredSubscriptions = async (req, res) => {
   }
 };
 
+// Get subscription status for user/affiliate
+const getSubscriptionStatus = async (req, res) => {
+  try {
+    const { userId, affiliateId } = req.query;
+
+    console.log('SubscriptionController - getSubscriptionStatus:', {
+      userId,
+      affiliateId,
+      authenticatedUser: req.user?._id,
+      query: req.query
+    });
+
+
+
+    if (!userId && !affiliateId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Either userId or affiliateId query parameter is required'
+      });
+    }
+
+    const subscriptionService = require('../services/subscriptionService');
+    const statusData = await subscriptionService.getSubscriptionStatus(userId, affiliateId);
+
+    res.status(200).json({
+      success: true,
+      data: statusData
+    });
+  } catch (error) {
+    console.error('Error getting subscription status:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get subscription status'
+    });
+  }
+};
+
 module.exports = {
   createSubscription,
   getAllSubscriptions,
   getSubscriptionById,
   updateSubscription,
   cancelSubscription,
-  checkExpiredSubscriptions
+  checkExpiredSubscriptions,
+  getSubscriptionStatus
 }; 

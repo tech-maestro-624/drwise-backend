@@ -14,14 +14,11 @@ const CategorySchema = new mongoose.Schema({
     type: Number,
     required: true,
     default: 0,
-    index: true
+    unique: true
   },
   image: {
     type: String
   }
 },{timestamps : true});
-
-// Ensure orderNo is unique
-CategorySchema.index({ orderNo: 1 }, { unique: true });
 
 module.exports = mongoose.model('Category', CategorySchema);

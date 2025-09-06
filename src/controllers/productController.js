@@ -82,3 +82,51 @@ exports.getProductsByCategoryId = async (req, res) => {
     res.status(500).json({ message: 'Failed to retrieve products' });
   }
 };
+
+exports.searchProducts = async (req, res) => {
+  try {
+    const { q: query, limit = 10, threshold = 0.4 } = req.query;
+
+    // Validate required parameters
+    if (!query || query.trim().length === 0) {
+      return res.status(400).json({
+        message: 'Search query parameter "q" is required',
+        example: '/api/products/search?q=laptop&limit=5&threshold=0.3'
+      });
+    }
+
+    // Validate limit parameter
+    const limitNum = parseInt(limit);
+    if (isNaN(limitNum) || limitNum < 1 || limitNum > 50) {
+      return res.status(400).json({
+        message: 'Limit must be a number between 1 and 50'
+      });
+    }
+
+    // Validate threshold parameter
+    const thresholdNum = parseFloat(threshold);
+    if (isNaN(thresholdNum) || thresholdNum < 0 || thresholdNum > 1) {
+      return res.status(400).json({
+        message: 'Threshold must be a number between 0 and 1 (lower = stricter matching)'
+      });
+    }
+
+    // Perform fuzzy search
+    const products = await productService.searchProductsFuzzy(query.trim(), limitNum, thresholdNum);
+
+    res.status(200).json({
+      query: query.trim(),
+      totalResults: products.length,
+      threshold: thresholdNum,
+      limit: limitNum,
+      results: products
+    });
+
+  } catch (error) {
+    console.error('Error in product search:', error);
+    res.status(500).json({
+      message: 'Failed to search products',
+      error: error.message
+    });
+  }
+};

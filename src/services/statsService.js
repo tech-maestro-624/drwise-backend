@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Sale = require('../models/Sale');
 const Lead = require('../models/Lead');
 const Config = require('../models/Configuration');
+const cacheService = require('./cacheService');
 
 function logAndThrowError(action, error) {
   console.error(`Error ${action}:`, error);
@@ -10,7 +11,15 @@ function logAndThrowError(action, error) {
 
 async function getTotalUsers() {
   try {
-    return await User.countDocuments();
+    const cacheKey = 'stats:totalUsers';
+
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        return await User.countDocuments();
+      },
+      300 // 5 minutes TTL for user stats
+    );
   } catch (error) {
     logAndThrowError('getting total users', error);
   }
@@ -18,7 +27,15 @@ async function getTotalUsers() {
 
 async function getTotalSales() {
   try {
-    return await Sale.countDocuments();
+    const cacheKey = 'stats:totalSales';
+
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        return await Sale.countDocuments();
+      },
+      300 // 5 minutes TTL
+    );
   } catch (error) {
     logAndThrowError('getting total sales', error);
   }
@@ -26,26 +43,34 @@ async function getTotalSales() {
 
 async function getSalesByTimeframe(timeframe) {
   try {
-    const now = new Date();
-    const startDate = new Date();
+    const cacheKey = `stats:sales:${timeframe}`;
 
-    switch (timeframe) {
-      case 'year':
-        startDate.setFullYear(startDate.getFullYear() - 1);
-        break;
-      case 'month':
-        startDate.setMonth(startDate.getMonth() - 1);
-        break;
-      case 'day':
-        startDate.setDate(startDate.getDate() - 1);
-        break;
-      default:
-        throw new Error('Invalid timeframe');
-    }
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const now = new Date();
+        const startDate = new Date();
 
-    return await Sale.countDocuments({
-      conversionDate: { $gte: startDate, $lte: now }
-    });
+        switch (timeframe) {
+          case 'year':
+            startDate.setFullYear(startDate.getFullYear() - 1);
+            break;
+          case 'month':
+            startDate.setMonth(startDate.getMonth() - 1);
+            break;
+          case 'day':
+            startDate.setDate(startDate.getDate() - 1);
+            break;
+          default:
+            throw new Error('Invalid timeframe');
+        }
+
+        return await Sale.countDocuments({
+          conversionDate: { $gte: startDate, $lte: now }
+        });
+      },
+      300 // 5 minutes TTL
+    );
   } catch (error) {
     logAndThrowError(`getting sales from ${timeframe}`, error);
   }
@@ -53,7 +78,15 @@ async function getSalesByTimeframe(timeframe) {
 
 async function getTotalLeads() {
   try {
-    return await Lead.countDocuments();
+    const cacheKey = 'stats:totalLeads';
+
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        return await Lead.countDocuments();
+      },
+      300 // 5 minutes TTL
+    );
   } catch (error) {
     logAndThrowError('getting total leads', error);
   }
@@ -61,7 +94,15 @@ async function getTotalLeads() {
 
 async function getTotalConvertedLeads() {
   try {
-    return await Lead.countDocuments({ status: 'Converted' });
+    const cacheKey = 'stats:totalConvertedLeads';
+
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        return await Lead.countDocuments({ status: 'Converted' });
+      },
+      300 // 5 minutes TTL
+    );
   } catch (error) {
     logAndThrowError('getting total converted leads', error);
   }
@@ -69,12 +110,20 @@ async function getTotalConvertedLeads() {
 
 async function getNewLeadsForToday() {
   try {
-    const startOfDay = new Date(new Date().setHours(0, 0, 0, 0));
-    const endOfDay = new Date(new Date().setHours(23, 59, 59, 999));
+    const cacheKey = 'stats:newLeadsToday';
 
-    return await Lead.countDocuments({
-      createdAt: { $gte: startOfDay, $lte: endOfDay }
-    });
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const startOfDay = new Date(new Date().setHours(0, 0, 0, 0));
+        const endOfDay = new Date(new Date().setHours(23, 59, 59, 999));
+
+        return await Lead.countDocuments({
+          createdAt: { $gte: startOfDay, $lte: endOfDay }
+        });
+      },
+      600 // 10 minutes TTL for daily stats
+    );
   } catch (error) {
     logAndThrowError('getting new leads for today', error);
   }
@@ -82,12 +131,20 @@ async function getNewLeadsForToday() {
 
 async function getLeadsToFollowUp() {
   try {
-    const startOfDay = new Date(new Date().setHours(0, 0, 0, 0));
+    const cacheKey = 'stats:leadsToFollowUp';
 
-    return await Lead.countDocuments({
-      followUpDate: { $lte: startOfDay },
-      status: { $ne: 'Converted' }
-    });
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const startOfDay = new Date(new Date().setHours(0, 0, 0, 0));
+
+        return await Lead.countDocuments({
+          followUpDate: { $lte: startOfDay },
+          status: { $ne: 'Converted' }
+        });
+      },
+      600 // 10 minutes TTL
+    );
   } catch (error) {
     logAndThrowError('getting leads to follow up', error);
   }

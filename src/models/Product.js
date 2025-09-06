@@ -20,6 +20,10 @@ const ProductSchema = new mongoose.Schema({
     type : mongoose.Schema.Types.ObjectId,
     ref : 'SubCategory',
     required : false
+  },
+  estimatedPrice : {
+     type : Number,
+    required : false
   }
 },{timestamps : true});
 

@@ -1,6 +1,7 @@
 // services/categoryService.js
 
 const Category = require('../models/Category');
+const cacheService = require('./cacheService');
 
 async function createCategory(categoryData) {
   try {
@@ -15,9 +16,13 @@ async function createCategory(categoryData) {
         throw new Error(`Order number ${categoryData.orderNo} is already in use`);
       }
     }
-    
+
     const category = new Category(categoryData);
     await category.save();
+
+    // Invalidate cache for all categories list
+    await cacheService.deleteByPattern('categories:all:*');
+
     return category;
   } catch (error) {
     if (error.code === 11000 && error.keyPattern && error.keyPattern.orderNo) {
@@ -28,37 +33,57 @@ async function createCategory(categoryData) {
 }
 
 async function getAllCategories(query = {}) {
-  return Category.find(query).sort({ orderNo: 1 });
+  const cacheKey = `categories:all:${JSON.stringify(query)}`;
+
+  return await cacheService.getOrSet(
+    cacheKey,
+    async () => {
+      return await Category.find(query).sort({ orderNo: 1 });
+    },
+    1800 // 30 minutes TTL
+  );
 }
 
 async function getCategoryById(categoryId) {
-  return Category.findById(categoryId);
+  const cacheKey = `categories:id:${categoryId}`;
+
+  return await cacheService.getOrSet(
+    cacheKey,
+    async () => {
+      return await Category.findById(categoryId);
+    },
+    1800 // 30 minutes TTL
+  );
 }
 
 async function updateCategory(categoryId, categoryData) {
   try {
     // If changing orderNo, check if it's already in use by another category
     if (categoryData.orderNo !== undefined) {
-      const existingCategory = await Category.findOne({ 
+      const existingCategory = await Category.findOne({
         orderNo: categoryData.orderNo,
         _id: { $ne: categoryId }
       });
-      
+
       if (existingCategory) {
         throw new Error(`Order number ${categoryData.orderNo} is already in use`);
       }
     }
-    
+
     const category = await Category.findByIdAndUpdate(
-      categoryId, 
-      categoryData, 
+      categoryId,
+      categoryData,
       { new: true, runValidators: true }
     );
-    
+
     if (!category) {
       throw new Error('Category not found');
     }
-    
+
+    // Invalidate cache for this specific category and all categories list
+    await cacheService.delete(`categories:id:${categoryId}`);
+    await cacheService.deleteByPattern('categories:all:*');
+
     return category;
   } catch (error) {
     if (error.code === 11000 && error.keyPattern && error.keyPattern.orderNo) {
@@ -73,6 +98,11 @@ async function deleteCategory(categoryId) {
   if (!category) {
     throw new Error('Category not found');
   }
+
+  // Invalidate cache for this specific category and all categories list
+  await cacheService.delete(`categories:id:${categoryId}`);
+  await cacheService.deleteByPattern('categories:all:*');
+
   return category;
 }
 
@@ -80,20 +110,27 @@ async function reorderCategories(orderData) {
   // orderData should be an array of { id, orderNo } objects
   const session = await Category.startSession();
   session.startTransaction();
-  
+
   try {
-    const updatePromises = orderData.map(item => 
+    const updatePromises = orderData.map(item =>
       Category.findByIdAndUpdate(
         item.id,
         { orderNo: item.orderNo },
         { new: true, session }
       )
     );
-    
+
     const results = await Promise.all(updatePromises);
     await session.commitTransaction();
     session.endSession();
-    
+
+    // Invalidate cache for all categories list and individual categories
+    await cacheService.deleteByPattern('categories:all:*');
+    const invalidatePromises = orderData.map(item =>
+      cacheService.delete(`categories:id:${item.id}`)
+    );
+    await Promise.all(invalidatePromises);
+
     return results;
   } catch (error) {
     await session.abortTransaction();

@@ -25,8 +25,12 @@ router.get('/dashboard-stats',isAuthenticated,
     // checkRoleOrPermission('READ_STATS'), 
     getDashboardStats);
 
-router.delete('/:id', isAuthenticated, 
-    // checkRoleOrPermission('DELETE_USER'), 
+router.delete('/:id', isAuthenticated,
+    // checkRoleOrPermission('DELETE_USER'),
     userController.delete);
+
+router.put('/:id/verification-status', isAuthenticated,
+    // checkRoleOrPermission('UPDATE_USER'),
+    userController.updateVerificationStatus);
 
 module.exports = router;

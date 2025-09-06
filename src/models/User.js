@@ -56,6 +56,15 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  verificationStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending',
+  },
+  verificationSubmittedAt: {
+    type: Date,
+    default: null,
+  },
   refCode: String,
   acceptedPolicies: {
     type: Boolean,
@@ -68,6 +77,48 @@ const UserSchema = new mongoose.Schema({
   },
   active: { type: Boolean, default: true },
   image: String,
+
+  // Banking details for withdrawals
+  banking: {
+    accountNumber: {
+      type: String,
+      default: null,
+    },
+    ifscCode: {
+      type: String,
+      default: null,
+    },
+    upiId: {
+      type: String,
+      default: null,
+    },
+    bankName: {
+      type: String,
+      default: null,
+    },
+    accountHolderName: {
+      type: String,
+      default: null,
+    },
+    branchName: {
+      type: String,
+      default: null,
+    },
+  },
+
+  // File references for verification documents
+  aadharFile: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'FileUpload',
+    default: null,
+  },
+  selfieFile: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'FileUpload',
+    default: null,
+  },
+
+
 
   referralBonusProcessed: {
     type: Boolean,

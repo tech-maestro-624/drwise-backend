@@ -31,15 +31,40 @@ exports.isAuthenticated = async (req, res, next) => {
       return res.status(401).json({ message: 'Invalid token payload' });
     }
 
-    const user = await User.findById(decoded.userId)
-      .populate('roles')
-      .populate('permissions');
+    // Try to find user with minimal population first
+    let user = await User.findById(decoded.userId);
 
     if (!user) {
       return res.status(401).json({ message: 'User not found' });
     }
 
-    req.user = user;
+    // Try to populate additional data, but don't fail if population fails
+    try {
+      user = await User.findById(decoded.userId)
+        .populate('roles')
+        .populate('permissions')
+        .populate('wallet');
+    } catch (populateError) {
+      // Continue with basic user data
+    }
+
+    // Ensure we have a clean user object
+    const cleanUser = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      roles: user.roles || [],
+      permissions: user.permissions || [],
+      wallet: user.wallet,
+      verified: user.verified,
+      verificationStatus: user.verificationStatus,
+      ambassadorId: user.ambassadorId,
+      refCode: user.refCode,
+      active: user.active
+    };
+
+    req.user = cleanUser;
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Authentication failed' });
@@ -87,4 +112,3 @@ exports.checkRoleOrPermission = (requiredPermission) => {
     }
   };
 };
-

@@ -3,10 +3,12 @@
 const leadService = require('../services/leadService');
 
 exports.createLead = async (req, res) => {
-  const { name, phoneNumber, referrer, categoryId, productId } = req.body;
+  const { name, phoneNumber, referrer, categoryId, productId, productIds } = req.body;
 
   try {
-    const lead = await leadService.createLead(name, phoneNumber, referrer,categoryId,productId);
+    // Support both single productId and array of productIds for backward compatibility
+    const productsToStore = productIds || (productId ? [productId] : []);
+    const lead = await leadService.createLead(name, phoneNumber, referrer, categoryId, productsToStore);
     res.status(201).json({ message: 'Lead created successfully', lead });
   } catch (error) {
     console.error(error);
@@ -42,7 +44,15 @@ exports.getLeadById = async (req, res) => {
 exports.updateLead = async (req, res) => {
   const { leadId } = req.params;
   try {
-    const lead = await leadService.updateLead(leadId, req?.body );
+    // Handle both single productId and productIds array for backward compatibility
+    const updateData = { ...req.body };
+
+    if (updateData.productId && !Array.isArray(updateData.productId)) {
+      // If single productId is provided, ensure it's handled properly
+      updateData.productId = updateData.productId;
+    }
+
+    const lead = await leadService.updateLead(leadId, updateData);
     res.status(200).json({ message: 'Lead updated successfully', lead });
   } catch (error) {
     console.error(error);
@@ -59,5 +69,22 @@ exports.deleteLead = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Failed to delete lead' });
+  }
+};
+
+// Migration endpoint for old lead data (admin only)
+exports.migrateLeadProducts = async (req, res) => {
+  try {
+    const result = await leadService.migrateOldLeadProducts();
+    res.status(200).json({
+      message: 'Lead product migration completed',
+      data: result
+    });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({
+      message: 'Failed to migrate lead products',
+      error: error.message
+    });
   }
 };

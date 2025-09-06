@@ -2,8 +2,34 @@
 
 const Lead = require('../models/Lead');
 
-async function createLead(name, phoneNumber, referrer,categoryId, productId) {
-  const lead = new Lead({ name, phoneNumber, referrer: referrer,categoryId,productId });
+// Utility function to normalize product IDs (handle both single and array)
+function normalizeProductIds(productIds) {
+  if (!productIds) return [];
+
+  // If it's already an array, return as is
+  if (Array.isArray(productIds)) {
+    return productIds.filter(id => id); // Filter out null/undefined values
+  }
+
+  // If it's a single value, convert to array
+  if (productIds) {
+    return [productIds];
+  }
+
+  return [];
+}
+
+async function createLead(name, phoneNumber, referrer, categoryId, productIds) {
+  // Normalize product IDs to handle both single and array inputs
+  const normalizedProductIds = normalizeProductIds(productIds);
+
+  const lead = new Lead({
+    name,
+    phoneNumber,
+    referrer: referrer,
+    categoryId,
+    productId: normalizedProductIds
+  });
   await lead.save();
   return lead;
 }
@@ -44,6 +70,15 @@ async function getLeadById(leadId) {
 }
 
 async function updateLead(leadId, data) {
+  // Handle product ID normalization for updates
+  if (data.productId !== undefined) {
+    data.productId = normalizeProductIds(data.productId);
+  }
+  if (data.productIds !== undefined) {
+    data.productId = normalizeProductIds(data.productIds);
+    delete data.productIds; // Remove the old field if present
+  }
+
   const lead = await Lead.findByIdAndUpdate(leadId, {$set : data},{new : true});
   if (!lead) {
     throw new Error('Lead not found');
@@ -59,10 +94,73 @@ async function deleteLead(leadId) {
   return lead;
 }
 
+// Utility function to migrate old leads with single productId to array format
+async function migrateOldLeadProducts() {
+  try {
+    console.log('Starting migration of old lead product data...');
+
+    // Find leads where productId is not an array (old format)
+    const oldLeads = await Lead.find({
+      $or: [
+        { productId: { $type: 'objectId' } }, // Single ObjectId
+        { productId: { $size: 0 } } // Empty array
+      ]
+    });
+
+    let migratedCount = 0;
+
+    for (const lead of oldLeads) {
+      let newProductId = [];
+
+      // If productId is a single ObjectId, convert to array
+      if (lead.productId && !Array.isArray(lead.productId)) {
+        newProductId = [lead.productId];
+      } else if (Array.isArray(lead.productId)) {
+        // Filter out any null/undefined values
+        newProductId = lead.productId.filter(id => id);
+      }
+
+      // Update the lead with normalized productId array
+      await Lead.findByIdAndUpdate(lead._id, {
+        productId: newProductId
+      });
+
+      migratedCount++;
+    }
+
+    console.log(`Migration completed. ${migratedCount} leads updated.`);
+    return { success: true, migratedCount };
+
+  } catch (error) {
+    console.error('Error during lead product migration:', error);
+    throw error;
+  }
+}
+
+// Utility function to get lead products in a consistent format
+function getLeadProducts(lead) {
+  if (!lead.productId) return [];
+
+  // If it's already an array, return as is
+  if (Array.isArray(lead.productId)) {
+    return lead.productId;
+  }
+
+  // If it's a single value, convert to array
+  if (lead.productId) {
+    return [lead.productId];
+  }
+
+  return [];
+}
+
 module.exports = {
   createLead,
   getAllLeads,
   getLeadById,
   updateLead,
   deleteLead,
+  migrateOldLeadProducts,
+  getLeadProducts,
+  normalizeProductIds,
 };

@@ -6,6 +6,7 @@ const Lead = require('../models/Lead');
 const { sendOtp } = require('../controllers/authController');
 const sendPushNotification = require("../utils/pushNotification");
 const Wallet = require('../models/Wallet')
+const cacheService = require('./cacheService');
 
 exports.get = async(query={}) => {
     try {
@@ -38,42 +39,50 @@ exports.get = async(query={}) => {
 }
 
 exports.getUserModelsAndPermissions = async (userId) => {
-    const user = await User.findById(userId).populate('roles').populate('permissions');
-  
-    const rolePermissions = [];
-    for (const role of user.roles) {
-      const populatedRole = await role.populate('permissions');
-      rolePermissions.push(...populatedRole.permissions.map((perm) => perm.name));
-    }
-  
-    const userPermissions = user.permissions.map((perm) => perm.name);
-  
-    const allPermissions = [...new Set([...rolePermissions, ...userPermissions])];
-  
-    const models = loadModels();
-    const modelNames = Object.keys(models);
-  
-    const modelsWithPermissions = modelNames.map((model) => {
-      const actions = ['CREATE', 'READ', 'UPDATE', 'DELETE'];
-      const modelPermissions = {};
-  
-      actions.forEach((action) => {
-        const permissionString = `${action}_${model}`;
-        modelPermissions[action] = allPermissions.includes(permissionString);
-      });
-  
-      return {
-        model,
-        permissions: modelPermissions,
-      };
-    });
-  
-    return modelsWithPermissions;
+    const cacheKey = `user:permissions:${userId}`;
+
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const user = await User.findById(userId).populate('roles').populate('permissions');
+
+        const rolePermissions = [];
+        for (const role of user.roles) {
+          const populatedRole = await role.populate('permissions');
+          rolePermissions.push(...populatedRole.permissions.map((perm) => perm.name));
+        }
+
+        const userPermissions = user.permissions.map((perm) => perm.name);
+
+        const allPermissions = [...new Set([...rolePermissions, ...userPermissions])];
+
+        const models = loadModels();
+        const modelNames = Object.keys(models);
+
+        const modelsWithPermissions = modelNames.map((model) => {
+          const actions = ['CREATE', 'READ', 'UPDATE', 'DELETE'];
+          const modelPermissions = {};
+
+          actions.forEach((action) => {
+            const permissionString = `${action}_${model}`;
+            modelPermissions[action] = allPermissions.includes(permissionString);
+          });
+
+          return {
+            model,
+            permissions: modelPermissions,
+          };
+        });
+
+        return modelsWithPermissions;
+      },
+      3600 // 1 hour TTL for permissions
+    );
   };
 
 
   /**
- * Registers a new user with the specified role, creates a corresponding customer and lead.
+ * Registers a new user with the specified role, creates a corresponding client and lead.
  * @param {string} roleName - The name of the role to assign to the user.
  * @param {Object} data - The data to create the user with.
  * @returns {Promise<void>}
@@ -108,7 +117,7 @@ exports.register = async (roleName = 'DEFAULT_USER', data) => {
 };
 
 
-exports.customerLoginOrRegister = async (data) => {
+exports.clientLoginOrRegister = async (data) => {
   try {
     let user = await User.findOne({phoneNumber : data.phoneNumber});
     
@@ -119,7 +128,7 @@ exports.customerLoginOrRegister = async (data) => {
       console.log(otp);
       return true;
     } else {
-      // Register the user with the customer role
+      // Register the user with the client role
       await this.register('DEFAULT_USER',data);
       return false;
     }
@@ -139,18 +148,18 @@ exports.updatePushNotifyToken = async(id,token) => {
 
 exports.sendNotification = async (data) => {
   try {
-    // Find the configuration for the customer role
-    const roleConfig = await Configuration.findOne({ name: 'CUSTOMER_ROLE_ID' });
+    // Find the configuration for the client role
+    const roleConfig = await Configuration.findOne({ name: 'CLIENT_ROLE_ID' });
 
     if (!roleConfig) {
-      throw new Error('Customer role configuration not found.');
+      throw new Error('Client role configuration not found.');
     }
 
-    const customerRoleId = roleConfig.value;
+    const clientRoleId = roleConfig.value;
 
     // Find all users who have the specified role in their roles array and a pushNotificationToken
     const users = await User.find({
-      roles: customerRoleId, 
+      roles: clientRoleId,
       pushNotificationToken: { $exists: true, $ne: null }
     });
 
@@ -167,6 +176,10 @@ exports.sendNotification = async (data) => {
 exports.update = async(id,data) => {
   try {
     const user= await User.findByIdAndUpdate(id,data,{new : true})
+
+    // Invalidate user permissions cache
+    await cacheService.delete(`user:permissions:${id}`);
+
     return user
   } catch (error) {
     console.log(error);
@@ -200,7 +213,106 @@ exports.delete = async (id) => {
     // Delete the user
     const deletedUser = await User.findByIdAndDelete(id);
 
+    // Invalidate user permissions cache
+    await cacheService.delete(`user:permissions:${id}`);
+
     return deletedUser;
+  } catch (error) {
+    throw error;
+  }
+};
+
+exports.updateBankingDetails = async (userId, bankingData) => {
+  try {
+    // Validate banking data
+    const requiredFields = ['accountNumber', 'ifscCode', 'bankName', 'accountHolderName', 'branchName'];
+    const missingFields = requiredFields.filter(field => !bankingData[field]);
+
+    if (missingFields.length > 0) {
+      throw new Error(`Missing required banking fields: ${missingFields.join(', ')}`);
+    }
+
+    // Validate IFSC code format (Indian standard)
+    const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+    if (!ifscRegex.test(bankingData.ifscCode)) {
+      throw new Error('Invalid IFSC code format');
+    }
+
+    // Validate account number format
+    const accountRegex = /^\d{9,18}$/;
+    if (!accountRegex.test(bankingData.accountNumber)) {
+      throw new Error('Invalid account number format');
+    }
+
+    // Validate account type if provided
+    const validAccountTypes = ['savings', 'current', 'business'];
+    if (bankingData.accountType && !validAccountTypes.includes(bankingData.accountType)) {
+      throw new Error('Invalid account type. Must be one of: savings, current, business');
+    }
+
+    // Prepare banking data with defaults
+    const bankingUpdate = {
+      accountNumber: bankingData.accountNumber,
+      ifscCode: bankingData.ifscCode,
+      bankName: bankingData.bankName,
+      accountHolderName: bankingData.accountHolderName,
+      branchName: bankingData.branchName,
+      accountType: bankingData.accountType || 'savings', // Default to savings
+      upiId: bankingData.upiId || null,
+      verified: false // Reset verification status when banking details are updated
+    };
+
+    const updateData = {
+      banking: bankingUpdate
+    };
+
+    const user = await User.findByIdAndUpdate(userId, updateData, { new: true });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    return user;
+  } catch (error) {
+    throw error;
+  }
+};
+
+exports.verifyBankingDetails = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (!user.banking || !user.banking.accountNumber) {
+      throw new Error('Banking details not found');
+    }
+
+    // Here you would typically integrate with bank verification APIs
+    // For now, we'll just mark as verified
+    const updateData = {
+      'banking.verified': true
+    };
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true });
+
+    return updatedUser;
+  } catch (error) {
+    throw error;
+  }
+};
+
+exports.getBankingDetails = async (userId) => {
+  try {
+    const user = await User.findById(userId).select('banking');
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    return user.banking || {};
   } catch (error) {
     throw error;
   }

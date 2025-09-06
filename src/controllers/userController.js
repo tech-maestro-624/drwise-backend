@@ -55,3 +55,28 @@ exports.sendNotification = async(req,res) => {
         return res.status(400).json({ error: error.message });
     }
 };
+
+exports.updateVerificationStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body; // 'approved' or 'rejected'
+
+        if (!['approved', 'rejected'].includes(status)) {
+            return res.status(400).json({ error: 'Invalid status. Must be approved or rejected.' });
+        }
+
+        const updateData = {
+            verificationStatus: status,
+            verified: status === 'approved'
+        };
+
+        const result = await userService.update(id, updateData);
+        return res.status(200).json({
+            success: true,
+            message: `User verification ${status}`,
+            data: result
+        });
+    } catch (error) {
+        return res.status(400).json({ error: error.message });
+    }
+};

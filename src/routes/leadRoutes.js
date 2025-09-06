@@ -15,9 +15,12 @@ router.get('/', isAuthenticated,
 router.get('/:leadId',isAuthenticated, 
     // checkRoleOrPermission('READ_LEAD'), 
     leadController.getLeadById);
-router.put('/:leadId',isAuthenticated, 
-    // checkRoleOrPermission('UPDATE_LEAD'), 
+router.put('/:leadId',isAuthenticated,
+    // checkRoleOrPermission('UPDATE_LEAD'),
     leadController.updateLead);
 router.delete('/:leadId', isAuthenticated, checkRoleOrPermission('DELETE_LEAD'), leadController.deleteLead);
+
+// Admin route for migrating old lead data
+router.post('/migrate-products', isAuthenticated, checkRoleOrPermission('ADMIN'), leadController.migrateLeadProducts);
 
 module.exports = router;
