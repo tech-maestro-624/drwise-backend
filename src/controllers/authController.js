@@ -44,6 +44,11 @@ exports.register = async (req, res) => {
       const normalizedReferralCode = userData.referralCode.trim().toLowerCase();
       const referringUser = await User.findOne({ refCode: normalizedReferralCode }).session(session);
       if (referringUser) {
+        // Check for self-referral prevention
+        if (referringUser.phoneNumber === userData.phoneNumber) {
+          throw new Error('Self-referral is not allowed. You cannot use your own referral code.');
+        }
+        
         referredBy = referringUser._id;
         if (referringUser.roles.includes(ambassadorRole)) {
           ambassadorId = referringUser._id;
@@ -387,9 +392,22 @@ exports.registerAmbassador = async (req, res) => {
 
   try {
     const ambassadorRole = await getConfig('AMBASSADOR_ROLE_ID');
+    const affiliateRole = await getConfig('AFFILIATE_ROLE_ID');
 
-    const existingUser = await User.findOne({ $or: [{ phoneNumber }, { email }] });
+    const existingUser = await User.findOne({ $or: [{ phoneNumber }, { email }] }).populate('roles');
     if (existingUser) {
+      // Check if existing user is an Affiliate
+      const isAffiliate = existingUser.roles.some(role => 
+        role._id.toString() === affiliateRole
+      );
+      
+      if (isAffiliate) {
+        return res.status(400).json({ 
+          message: 'Affiliates cannot register as Ambassadors. Self-referral commission is not allowed as per IRDAI guidelines.',
+          error: 'AFFILIATE_CANNOT_BE_AMBASSADOR'
+        });
+      }
+      
       return res.status(400).json({ message: 'User with this phone number or email already exists' });
     }
 

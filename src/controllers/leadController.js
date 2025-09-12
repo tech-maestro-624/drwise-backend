@@ -24,6 +24,15 @@ exports.createLead = async (req, res) => {
       });
     }
 
+    // Check for self-referral prevention
+    const selfReferralCheck = await leadService.checkSelfReferral(phoneNumber, referrer);
+    if (!selfReferralCheck.isAllowed) {
+      return res.status(400).json({
+        message: selfReferralCheck.message,
+        error: 'SELF_REFERRAL_NOT_ALLOWED'
+      });
+    }
+
     // Create leads (service will create separate leads for each product)
     const leads = await leadService.createLead(name, phoneNumber, referrer, categoryId, productsArray);
 
@@ -112,6 +121,17 @@ exports.checkPhoneReferral = async (req, res) => {
   console.log(phoneNumber, currentAffiliateId);
 
   try {
+    // First check for self-referral prevention
+    const selfReferralCheck = await leadService.checkSelfReferral(phoneNumber, currentAffiliateId);
+    if (!selfReferralCheck.isAllowed) {
+      return res.status(400).json({
+        success: false,
+        isSelfReferral: true,
+        message: selfReferralCheck.message,
+        error: 'SELF_REFERRAL_NOT_ALLOWED'
+      });
+    }
+
     // Find all leads for this phone number (since there might be multiple leads for different products)
     const existingLeads = await Lead.find({ phoneNumber: phoneNumber }).populate('productId');
 

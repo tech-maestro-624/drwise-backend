@@ -1,6 +1,8 @@
 // services/leadService.js
 
 const Lead = require('../models/Lead');
+const User = require('../models/User');
+const { getConfig } = require('./configurationService');
 
 // Utility function to normalize product IDs (handle both single and array)
 function normalizeProductIds(productIds) {
@@ -17,6 +19,67 @@ function normalizeProductIds(productIds) {
   }
 
   return [];
+}
+
+// Check for self-referral prevention
+async function checkSelfReferral(phoneNumber, referrerId) {
+  try {
+    // Get the referrer user details
+    const referrer = await User.findById(referrerId).populate('roles');
+    if (!referrer) {
+      return {
+        isAllowed: false,
+        message: 'Referrer not found'
+      };
+    }
+
+    // Check if the phone number being referred belongs to the referrer themselves
+    if (referrer.phoneNumber === phoneNumber) {
+      return {
+        isAllowed: false,
+        message: 'Self-referral is not allowed. You cannot refer yourself.'
+      };
+    }
+
+    // Get role IDs from configuration
+    const affiliateRoleId = await getConfig('AFFILIATE_ROLE_ID');
+    const ambassadorRoleId = await getConfig('AMBASSADOR_ROLE_ID');
+
+    // Check if referrer has Affiliate or Ambassador role
+    const referrerRoleIds = referrer.roles.map(role => role._id.toString());
+    const isAffiliate = referrerRoleIds.includes(affiliateRoleId);
+    const isAmbassador = referrerRoleIds.includes(ambassadorRoleId);
+
+    if (isAffiliate || isAmbassador) {
+      // Check if the phone number belongs to another user with Affiliate or Ambassador role
+      const existingUser = await User.findOne({ phoneNumber }).populate('roles');
+      
+      if (existingUser) {
+        const existingUserRoleIds = existingUser.roles.map(role => role._id.toString());
+        const isExistingUserAffiliate = existingUserRoleIds.includes(affiliateRoleId);
+        const isExistingUserAmbassador = existingUserRoleIds.includes(ambassadorRoleId);
+
+        if (isExistingUserAffiliate || isExistingUserAmbassador) {
+          return {
+            isAllowed: false,
+            message: 'You cannot refer another Affiliate or Ambassador. Self-referral commission is not allowed as per IRDAI guidelines.'
+          };
+        }
+      }
+    }
+
+    return {
+      isAllowed: true,
+      message: 'Referral is allowed'
+    };
+
+  } catch (error) {
+    console.error('Error checking self-referral:', error);
+    return {
+      isAllowed: false,
+      message: 'Error validating referral. Please try again.'
+    };
+  }
 }
 
 // Create separate leads for each product
@@ -196,4 +259,5 @@ module.exports = {
   migrateOldLeadProducts,
   getLeadProducts,
   normalizeProductIds,
+  checkSelfReferral,
 };
