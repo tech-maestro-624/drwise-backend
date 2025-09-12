@@ -8,6 +8,8 @@ const { getConfig } = require('../services/configurationService');
 const subscriptionService = require('../services/subscriptionService');
 const fileService = require('../services/fileService');
 const userService = require('../services/userService');
+const paymentService = require('../services/paymentService');
+const Subscription = require('../models/Subscription');
 
 exports.register = async (req, res) => {
   const session = await mongoose.startSession();
@@ -42,6 +44,11 @@ exports.register = async (req, res) => {
       const normalizedReferralCode = userData.referralCode.trim().toLowerCase();
       const referringUser = await User.findOne({ refCode: normalizedReferralCode }).session(session);
       if (referringUser) {
+        // Check for self-referral prevention
+        if (referringUser.phoneNumber === userData.phoneNumber) {
+          throw new Error('Self-referral is not allowed. You cannot use your own referral code.');
+        }
+        
         referredBy = referringUser._id;
         if (referringUser.roles.includes(ambassadorRole)) {
           ambassadorId = referringUser._id;
@@ -107,6 +114,26 @@ exports.register = async (req, res) => {
     };
 
     const newUser = await userService.create(newUserData);
+
+    // Handle subscription association if tempSubscriptionId is provided
+    if (userData.tempSubscriptionId && userData.subscriptionType) {
+      try {
+        console.log('Associating temporary subscription:', userData.tempSubscriptionId, 'with user:', newUser._id);
+
+        // Associate the temporary subscription with the user
+        const associationResult = await paymentService.associateSubscriptionWithUser(
+          userData.tempSubscriptionId,
+          newUser._id,
+          null // affiliateId is null for regular users
+        );
+
+        console.log('Subscription association result:', associationResult);
+      } catch (subscriptionError) {
+        console.error('Error associating subscription:', subscriptionError);
+        // Don't fail registration if subscription association fails
+        // The subscription can be associated later manually if needed
+      }
+    }
 
     // Commit transaction
     await session.commitTransaction();
@@ -253,8 +280,16 @@ exports.getUserData = async (req, res) => {
       return res.status(500).json({ message: 'User data corrupted' });
     }
 
-    return res.json({ user });
+    // Populate file references to get actual file data
+    const populatedUser = await User.findById(user._id)
+      .populate('aadharFile')
+      .populate('selfieFile')
+      .populate('roles')
+      .populate('permissions');
+
+    return res.json({ user: populatedUser });
   } catch (err) {
+    console.error('Error in getUserData:', err);
     res.status(500).json({ message: 'Failed to get user data' });
   }
 };
@@ -357,9 +392,22 @@ exports.registerAmbassador = async (req, res) => {
 
   try {
     const ambassadorRole = await getConfig('AMBASSADOR_ROLE_ID');
+    const affiliateRole = await getConfig('AFFILIATE_ROLE_ID');
 
-    const existingUser = await User.findOne({ $or: [{ phoneNumber }, { email }] });
+    const existingUser = await User.findOne({ $or: [{ phoneNumber }, { email }] }).populate('roles');
     if (existingUser) {
+      // Check if existing user is an Affiliate
+      const isAffiliate = existingUser.roles.some(role => 
+        role._id.toString() === affiliateRole
+      );
+      
+      if (isAffiliate) {
+        return res.status(400).json({ 
+          message: 'Affiliates cannot register as Ambassadors. Self-referral commission is not allowed as per IRDAI guidelines.',
+          error: 'AFFILIATE_CANNOT_BE_AMBASSADOR'
+        });
+      }
+      
       return res.status(400).json({ message: 'User with this phone number or email already exists' });
     }
 

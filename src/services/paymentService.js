@@ -20,6 +20,67 @@ const razorpay = new Razorpay({
     key_secret: RAZORPAY_KEY_SECRET,
 });
 
+// Create Razorpay order for new subscription (temporary - before user creation)
+const createNewSubscriptionOrder = async (subscriptionType) => {
+    try {
+        // Get the appropriate plan based on subscription type
+        const planName = subscriptionType === 'ambassador' ? 'Ambassador' : 'Affiliate';
+        const plan = await SubscriptionPlans.findOne({ name: planName });
+
+        if (!plan) {
+            throw new Error(`${subscriptionType} subscription plan not found`);
+        }
+
+        // Create Razorpay order with temporary data
+        const shortId = 'temp_' + Date.now().toString().slice(-8); // Temporary ID
+        const timestamp = Date.now().toString().slice(-6); // Take last 6 digits of timestamp
+        const options = {
+            amount: plan.price * 100, // Razorpay expects amount in paisa
+            currency: "INR",
+            receipt: `new_${shortId}_${timestamp}`,
+            notes: {
+                type: 'new_subscription',
+                subscriptionType: subscriptionType,
+                planId: plan._id.toString(),
+                customerName: 'Temporary User',
+                tempOrder: true
+            },
+            payment_capture: 1
+        };
+
+        console.log('Creating new subscription Razorpay order with options:', {
+            amount: options.amount,
+            currency: options.currency,
+            receipt: options.receipt,
+            notes: options.notes
+        });
+
+        const order = await razorpay.orders.create(options);
+
+        console.log('Razorpay order created successfully:', {
+            orderId: order.id,
+            amount: order.amount,
+            currency: order.currency
+        });
+
+        return {
+            orderId: order.id,
+            amount: plan.price,
+            currency: order.currency,
+            planDetails: {
+                name: plan.name,
+                price: plan.price,
+                features: plan.features
+            },
+            subscriptionType: subscriptionType,
+            key: RAZORPAY_KEY_ID
+        };
+    } catch (error) {
+        console.error('Error creating new subscription order:', error);
+        throw new Error('Failed to create payment order');
+    }
+};
+
 // Create Razorpay order for subscription renewal
 const createRenewalOrder = async (userId, affiliateId, subscriptionType) => {
     try {
@@ -268,6 +329,146 @@ const processRenewalPayment = async (paymentData) => {
     }
 };
 
+// Process successful payment for new subscription (temporary - before user creation)
+const processNewSubscriptionPayment = async (paymentData) => {
+    try {
+        const {
+            razorpay_payment_id,
+            razorpay_order_id,
+            razorpay_signature,
+            subscriptionType
+        } = paymentData;
+
+        console.log('Processing new subscription payment:', {
+            payment_id: razorpay_payment_id,
+            order_id: razorpay_order_id,
+            subscriptionType
+        });
+
+        // Verify payment
+        console.log('Verifying payment signature...');
+        const verification = await verifyPayment(razorpay_payment_id, razorpay_order_id, razorpay_signature);
+        if (!verification.verified) {
+            console.error('Payment verification failed:', verification.error);
+            throw new Error('Payment verification failed: ' + verification.error);
+        }
+        console.log('Payment verification successful');
+
+        // Get order details from Razorpay
+        console.log('Fetching order details from Razorpay...');
+        const order = await razorpay.orders.fetch(razorpay_order_id);
+        const planId = order.notes.planId;
+
+        console.log('Order details:', {
+            planId,
+            subscriptionType,
+            orderAmount: order.amount
+        });
+
+        // Get plan details
+        const plan = await SubscriptionPlans.findById(planId);
+        if (!plan) {
+            throw new Error('Subscription plan not found');
+        }
+
+        const now = new Date();
+        const startDate = now;
+        const endDate = new Date(now.getTime() + (365 * 24 * 60 * 60 * 1000)); // 1 year from now
+
+        // Create temporary subscription (without userId/affiliateId)
+        const tempSubscription = new Subscription({
+            subscriptionType: subscriptionType,
+            startDate: startDate,
+            endDate: endDate,
+            status: 'temp_pending_user', // Special status for temporary subscriptions
+            planDetails: {
+                name: plan.name,
+                price: plan.price,
+                features: plan.features
+            },
+            paymentInfo: {
+                transactionId: razorpay_payment_id,
+                paymentMethod: 'razorpay',
+                paymentDate: now
+            },
+            tempOrderId: razorpay_order_id // Store order ID for reference
+        });
+
+        console.log('Saving temporary subscription...');
+        console.log('Subscription data:', {
+            subscriptionType,
+            startDate,
+            endDate,
+            status: 'temp_pending_user',
+            planDetails: {
+                name: plan.name,
+                price: plan.price,
+                features: plan.features
+            }
+        });
+
+        await tempSubscription.save();
+
+        console.log('Temporary subscription created successfully with ID:', tempSubscription._id);
+        return {
+            success: true,
+            message: 'New subscription payment processed successfully',
+            tempSubscriptionId: tempSubscription._id,
+            paymentId: razorpay_payment_id
+        };
+    } catch (error) {
+        console.error('Error processing new subscription payment:', error);
+        throw error;
+    }
+};
+
+// Associate temporary subscription with user after registration
+const associateSubscriptionWithUser = async (tempSubscriptionId, userId, affiliateId) => {
+    try {
+        console.log('Associating temporary subscription with user:', {
+            tempSubscriptionId,
+            userId,
+            affiliateId
+        });
+
+        // Find the temporary subscription
+        const tempSubscription = await Subscription.findById(tempSubscriptionId);
+        if (!tempSubscription) {
+            throw new Error('Temporary subscription not found');
+        }
+
+        if (tempSubscription.status !== 'temp_pending_user') {
+            throw new Error('Subscription is not in temporary state');
+        }
+
+        // Associate with user/affiliate
+        if (userId) {
+            tempSubscription.userId = userId;
+        } else if (affiliateId) {
+            tempSubscription.affiliateId = affiliateId;
+        }
+
+        // Update status to active
+        tempSubscription.status = 'active';
+
+        console.log('Saving associated subscription...');
+        await tempSubscription.save();
+
+        // Clear cache
+        await cacheService.deleteByPattern('subscriptions:*');
+
+        console.log('Subscription successfully associated with user');
+        return {
+            success: true,
+            subscription: tempSubscription,
+            message: 'Subscription associated with user successfully'
+        };
+    } catch (error) {
+        console.error('Error associating subscription with user:', error);
+        throw error;
+    }
+};
+
 // Get payment history for user/affiliate
 const getPaymentHistory = async (userId, affiliateId) => {
     try {
@@ -361,8 +562,11 @@ const checkRenewalEligibility = async (userId, affiliateId) => {
 };
 
 module.exports = {
+    createNewSubscriptionOrder,
     createRenewalOrder,
     processRenewalPayment,
+    processNewSubscriptionPayment,
+    associateSubscriptionWithUser,
     verifyPayment,
     getPaymentHistory,
     checkRenewalEligibility

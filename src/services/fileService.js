@@ -68,7 +68,9 @@ exports.generateDownloadLink = async (fileId) => {
   if (!file) throw new Error("File not found");
 
   // For local files, return the direct URL
-  const encodedFilePath = encodeURIComponent(file.localFilePath.replace(/\\/g, '/'));
+  // Remove 'uploads/' prefix from localFilePath since static route serves from /uploads
+  const relativePath = file.localFilePath.replace(/^uploads[\/\\]/, '').replace(/\\/g, '/');
+  const encodedFilePath = encodeURIComponent(relativePath);
   const fileURL = `${baseURL}/uploads/${encodedFilePath}`;
   return fileURL;
 };

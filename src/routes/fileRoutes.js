@@ -17,10 +17,8 @@ const limiter = rateLimit({
 // Protected route for file upload
 router.post('/upload', isAuthenticated,
   upload.single('file'),
-  // fileUploadCheck, (req, res) => {
-  // });
-  fileController.uploadFileController
-);
+  fileUploadCheck,
+  fileController.uploadFileController);
 
 // Protected routes for file operations
 router.post('/getSignedUrl', isAuthenticated, fileController.generateSignedUrl);

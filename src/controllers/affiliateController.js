@@ -1,8 +1,46 @@
 const affiliateService = require('../services/affiliateService');
-
+const User = require('../models/User');
+const { getConfig } = require('../services/configurationService');
 
 const createAffiliate = async (req, res) => {
     try {
+        // Check if the user trying to register as affiliate is already an Ambassador
+        const { phoneNumber, email } = req.body;
+        
+        if (phoneNumber) {
+            const existingUser = await User.findOne({ phoneNumber }).populate('roles');
+            if (existingUser) {
+                const ambassadorRoleId = await getConfig('AMBASSADOR_ROLE_ID');
+                const isAmbassador = existingUser.roles.some(role => 
+                    role._id.toString() === ambassadorRoleId
+                );
+                
+                if (isAmbassador) {
+                    return res.status(400).json({ 
+                        message: 'Ambassadors cannot register as Affiliates. Self-referral commission is not allowed as per IRDAI guidelines.',
+                        error: 'AMBASSADOR_CANNOT_BE_AFFILIATE'
+                    });
+                }
+            }
+        }
+        
+        if (email) {
+            const existingUserByEmail = await User.findOne({ email }).populate('roles');
+            if (existingUserByEmail) {
+                const ambassadorRoleId = await getConfig('AMBASSADOR_ROLE_ID');
+                const isAmbassador = existingUserByEmail.roles.some(role => 
+                    role._id.toString() === ambassadorRoleId
+                );
+                
+                if (isAmbassador) {
+                    return res.status(400).json({ 
+                        message: 'Ambassadors cannot register as Affiliates. Self-referral commission is not allowed as per IRDAI guidelines.',
+                        error: 'AMBASSADOR_CANNOT_BE_AFFILIATE'
+                    });
+                }
+            }
+        }
+
         const affiliate = await affiliateService.createAffiliate(req.body);
         res.status(201).json(affiliate);
     } catch (error) {

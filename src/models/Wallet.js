@@ -86,6 +86,7 @@ WalletSchema.methods.addTransaction = async function (
     amount,
     date: new Date(),
     description,
+    isCredit: true, // Set to true for immediate credits
   });
 
   this.transactions.push(newTransaction._id);

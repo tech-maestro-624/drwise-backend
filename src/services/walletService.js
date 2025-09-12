@@ -55,6 +55,7 @@ async function creditWallet(userId, amount, description = 'Credit') {
     amount: Number(amount),
     description,
     status: 'approved',
+    isCredit: true, // Set to true for immediate credits
   });
   await transaction.save();
 
@@ -134,7 +135,10 @@ async function debitWallet(userId, amount, description = 'Debit', transactionId)
  */
 async function getWalletTransactions(userId) {
   const wallet = await getWalletByUserId(userId);
-  const populatedWallet = await Wallet.findById(wallet._id).populate('transactions');
+  const populatedWallet = await Wallet.findById(wallet._id).populate({
+    path: 'transactions',
+    options: { sort: { createdAt: -1 } } // Sort by newest first
+  });
   return populatedWallet.transactions;
 }
 
