@@ -9,10 +9,26 @@ router.post('/create-order',
     paymentController.createRenewalOrder
 );
 
+// Create payment order for new subscription (temporary - before user creation)
+router.post('/create-new-subscription-order',
+    paymentController.createNewSubscriptionOrder
+);
+
 // Process payment after successful transaction
 router.post('/process-payment',
     isAuthenticated,
     paymentController.processPayment
+);
+
+// Process new subscription payment (temporary - before user creation)
+router.post('/process-new-subscription-payment',
+    paymentController.processNewSubscriptionPayment
+);
+
+// Associate temporary subscription with user after registration
+router.post('/associate-subscription',
+    isAuthenticated,
+    paymentController.associateSubscriptionWithUser
 );
 
 // Check renewal eligibility for user/affiliate

@@ -19,19 +19,52 @@ function normalizeProductIds(productIds) {
   return [];
 }
 
+// Create separate leads for each product
 async function createLead(name, phoneNumber, referrer, categoryId, productIds) {
-  // Normalize product IDs to handle both single and array inputs
-  const normalizedProductIds = normalizeProductIds(productIds);
+  // Ensure productIds is an array
+  const normalizedProductIds = Array.isArray(productIds) ? productIds : [productIds];
 
-  const lead = new Lead({
-    name,
-    phoneNumber,
-    referrer: referrer,
-    categoryId,
-    productId: normalizedProductIds
-  });
-  await lead.save();
-  return lead;
+  if (!normalizedProductIds.length) {
+    throw new Error('At least one product is required');
+  }
+
+  const createdLeads = [];
+
+  for (const productId of normalizedProductIds) {
+    if (!productId) continue;
+
+    // Check if this phone number + product combination already exists
+    const existingLead = await Lead.findOne({
+      phoneNumber: phoneNumber,
+      productId: productId
+    });
+
+    if (existingLead) {
+      // If same referrer, skip (already exists)
+      if (existingLead.referrer.toString() === referrer.toString()) {
+        createdLeads.push(existingLead);
+        continue;
+      } else {
+        // Different referrer - not allowed
+        throw new Error(`This phone number has already been referred for this product by another affiliate`);
+      }
+    }
+
+    // Create new lead for this product
+    const lead = new Lead({
+      name,
+      phoneNumber,
+      referrer: referrer,
+      categoryId,
+      productId: productId
+    });
+
+    await lead.save();
+    createdLeads.push(lead);
+  }
+
+  // Return array of created leads
+  return createdLeads.length === 1 ? createdLeads[0] : createdLeads;
 }
 
 async function getAllLeads(query = {}) {

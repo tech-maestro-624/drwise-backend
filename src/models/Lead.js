@@ -25,14 +25,14 @@ const LeadSchema = new mongoose.Schema({
     ref: 'Category',
     required: false,
   },
-  productId : [{
+  productId : {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
-  }],
+    required: true,
+  },
   notes: [],
   status: {
     type: String,
-    enum: ['Pending', 'Converted', 'Rejected'],
     default: 'Pending',
   },
 },{timestamps : true});

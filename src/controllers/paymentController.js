@@ -2,6 +2,35 @@
 const paymentService = require('../services/paymentService');
 const crypto = require('crypto');
 
+// Create payment order for new subscription (temporary - before user creation)
+const createNewSubscriptionOrder = async (req, res) => {
+    try {
+        const { subscriptionType } = req.body;
+
+        // Validate input
+        if (!subscriptionType || !['ambassador', 'affiliate'].includes(subscriptionType)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Valid subscription type (ambassador or affiliate) is required'
+            });
+        }
+
+        const orderData = await paymentService.createNewSubscriptionOrder(subscriptionType);
+
+        res.status(200).json({
+            success: true,
+            message: 'Payment order created successfully',
+            data: orderData
+        });
+    } catch (error) {
+        console.error('Error creating new subscription order:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to create payment order'
+        });
+    }
+};
+
 // Create payment order for subscription renewal
 const createRenewalOrder = async (req, res) => {
     try {
@@ -100,6 +129,94 @@ const processPayment = async (req, res) => {
         res.status(500).json({
             success: false,
             message: error.message || 'Payment processing failed'
+        });
+    }
+};
+
+// Process new subscription payment (temporary - before user creation)
+const processNewSubscriptionPayment = async (req, res) => {
+    try {
+        const {
+            razorpay_payment_id,
+            razorpay_order_id,
+            razorpay_signature,
+            subscriptionType
+        } = req.body;
+
+        console.log('Processing new subscription payment:', {
+            payment_id: razorpay_payment_id,
+            order_id: razorpay_order_id,
+            subscriptionType
+        });
+
+        // Validate required fields
+        if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !subscriptionType) {
+            console.log('Missing required payment fields');
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required payment verification data or subscription type'
+            });
+        }
+
+        const paymentData = {
+            razorpay_payment_id,
+            razorpay_order_id,
+            razorpay_signature,
+            subscriptionType
+        };
+
+        console.log('Calling payment service with data:', paymentData);
+        const result = await paymentService.processNewSubscriptionPayment(paymentData);
+        console.log('Payment service result:', result);
+
+        res.status(200).json({
+            success: true,
+            message: result.message,
+            data: {
+                tempSubscriptionId: result.tempSubscriptionId,
+                paymentId: result.paymentId
+            }
+        });
+    } catch (error) {
+        console.error('Error processing new subscription payment:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Payment processing failed'
+        });
+    }
+};
+
+// Associate temporary subscription with user after registration
+const associateSubscriptionWithUser = async (req, res) => {
+    try {
+        const { tempSubscriptionId, userId, affiliateId } = req.body;
+
+        if (!tempSubscriptionId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Temporary subscription ID is required'
+            });
+        }
+
+        if (!userId && !affiliateId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Either userId or affiliateId is required'
+            });
+        }
+
+        const result = await paymentService.associateSubscriptionWithUser(tempSubscriptionId, userId, affiliateId);
+
+        res.status(200).json({
+            success: true,
+            message: 'Subscription associated with user successfully',
+            data: result
+        });
+    } catch (error) {
+        console.error('Error associating subscription with user:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to associate subscription with user'
         });
     }
 };
@@ -204,8 +321,11 @@ const handleWebhook = async (req, res) => {
 };
 
 module.exports = {
+    createNewSubscriptionOrder,
     createRenewalOrder,
     processPayment,
+    processNewSubscriptionPayment,
+    associateSubscriptionWithUser,
     checkRenewalEligibility,
     getPaymentHistory,
     handleWebhook

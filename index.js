@@ -8,6 +8,7 @@ dotenv.config();
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const generateCRUDPermissions = require('./src/utils/generatePermissions');
+const cronService = require('./src/services/cronService');
 
 const app = express();
 
@@ -32,6 +33,9 @@ generateCRUDPermissions()
     console.error('Error generating permissions:', err);
   });
 
+// Initialize cron service for delayed credit processing
+cronService.init();
+
 // Middleware
 app.use(bodyParser.json({ limit: '50mb' }));
 
@@ -41,7 +45,8 @@ app.use(cors({
     'https://drwise-internal.vercel.app',
     'http://192.168.29.241:5001',
     'http://localhost:5001',
-    'http://10.0.2.2:5001' // Android emulator
+    'http://10.0.2.2:5001' ,// Android emulator
+    "http://localhost:3000"
   ],
   credentials: true,
 }));

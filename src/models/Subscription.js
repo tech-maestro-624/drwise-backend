@@ -24,7 +24,7 @@ const subscriptionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['active', 'inactive', 'expired', 'pending', 'cancelled'],
+    enum: ['active', 'inactive', 'expired', 'pending', 'cancelled', 'temp_pending_user'],
     default: 'active',
   },
   planDetails: {
@@ -37,11 +37,21 @@ const subscriptionSchema = new mongoose.Schema({
     transactionId: String,
     paymentMethod: String,
     paymentDate: Date
+  },
+  tempOrderId: {
+    type: String,
+    required: false // Only used for temporary subscriptions
   }
 }, { timestamps: true });
 
-// Add validation to ensure either userId or affiliateId is provided, but not both
+// Add validation to ensure either userId or affiliateId is provided for non-temporary subscriptions
 subscriptionSchema.pre('validate', function(next) {
+  // Allow temporary subscriptions without userId/affiliateId
+  if (this.status === 'temp_pending_user') {
+    return next();
+  }
+
+  // For all other subscriptions, ensure either userId or affiliateId is provided, but not both
   if ((this.userId && this.affiliateId) || (!this.userId && !this.affiliateId)) {
     next(new Error('Either userId or affiliateId must be provided, but not both'));
   }

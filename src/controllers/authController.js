@@ -8,6 +8,8 @@ const { getConfig } = require('../services/configurationService');
 const subscriptionService = require('../services/subscriptionService');
 const fileService = require('../services/fileService');
 const userService = require('../services/userService');
+const paymentService = require('../services/paymentService');
+const Subscription = require('../models/Subscription');
 
 exports.register = async (req, res) => {
   const session = await mongoose.startSession();
@@ -107,6 +109,26 @@ exports.register = async (req, res) => {
     };
 
     const newUser = await userService.create(newUserData);
+
+    // Handle subscription association if tempSubscriptionId is provided
+    if (userData.tempSubscriptionId && userData.subscriptionType) {
+      try {
+        console.log('Associating temporary subscription:', userData.tempSubscriptionId, 'with user:', newUser._id);
+
+        // Associate the temporary subscription with the user
+        const associationResult = await paymentService.associateSubscriptionWithUser(
+          userData.tempSubscriptionId,
+          newUser._id,
+          null // affiliateId is null for regular users
+        );
+
+        console.log('Subscription association result:', associationResult);
+      } catch (subscriptionError) {
+        console.error('Error associating subscription:', subscriptionError);
+        // Don't fail registration if subscription association fails
+        // The subscription can be associated later manually if needed
+      }
+    }
 
     // Commit transaction
     await session.commitTransaction();
@@ -253,8 +275,16 @@ exports.getUserData = async (req, res) => {
       return res.status(500).json({ message: 'User data corrupted' });
     }
 
-    return res.json({ user });
+    // Populate file references to get actual file data
+    const populatedUser = await User.findById(user._id)
+      .populate('aadharFile')
+      .populate('selfieFile')
+      .populate('roles')
+      .populate('permissions');
+
+    return res.json({ user: populatedUser });
   } catch (err) {
+    console.error('Error in getUserData:', err);
     res.status(500).json({ message: 'Failed to get user data' });
   }
 };

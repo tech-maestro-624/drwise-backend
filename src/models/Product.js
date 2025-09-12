@@ -24,6 +24,10 @@ const ProductSchema = new mongoose.Schema({
   estimatedPrice : {
      type : Number,
     required : false
+  },
+  immediateCredit:{
+    type : Boolean,
+    default : false
   }
 },{timestamps : true});
 

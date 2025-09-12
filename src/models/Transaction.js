@@ -47,6 +47,14 @@ const TransactionSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    isCredit:{
+      type: Boolean,
+      default: false,
+    },
+    scheduledCreditDate: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

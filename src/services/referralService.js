@@ -2,8 +2,10 @@ const Lead = require('../models/Lead');
 const Wallet = require('../models/Wallet');
 const Sale = require('../models/Sale');
 const User = require('../models/User');
+const Product = require('../models/Product');
 const { getConfig } = require('../services/configurationService');
 const walletService = require('../services/walletService');
+const delayedCreditService = require('../services/delayedCreditService');
 
 async function createReferral(referrerId, referredName, referredPhoneNumber) {
   const lead = new Lead({
@@ -33,6 +35,12 @@ async function convertLead(
     throw new Error('Lead not found');
   }
 
+  // Get the product to check immediateCredit setting
+  const product = await Product.findById(productId);
+  if (!product) {
+    throw new Error('Product not found');
+  }
+
   const sale = new Sale({
     lead: leadId,
     product: productId,
@@ -43,17 +51,31 @@ async function convertLead(
   });
   await sale.save();
 
-  // 1) First-degree user: credit immediately
+  // 1) First-degree user: credit based on product.immediateCredit setting
   const firstDegWallet = await Wallet.findOne({ user: lead.referrer });
   if (!firstDegWallet) {
     throw new Error('No wallet found for first-degree referrer');
   }
 
-  await walletService.creditWallet(
-    lead.referrer,
-    Number(refBonus),
-    `Referral bonus from sale of value: ${conversionAmt}`
-  );
+  if (product.immediateCredit) {
+    // Immediate credit
+    await walletService.creditWallet(
+      lead.referrer,
+      Number(refBonus),
+      `Referral bonus from sale of value: ${conversionAmt}`
+    );
+  } else {
+    // Delayed credit - schedule for later
+    await delayedCreditService.createDelayedCredit(
+      lead.referrer,
+      Number(refBonus),
+      `Referral bonus from sale of value: ${conversionAmt}`,
+      'REFERRAL_BONUS'
+    );
+  }
+
+  
+
 
   // 2) Check for second-degree user
   const firstDegUser = await User.findById(lead.referrer);

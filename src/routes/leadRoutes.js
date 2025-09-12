@@ -6,14 +6,18 @@ const leadController = require('../controllers/leadController');
 const {isAuthenticated,checkRoleOrPermission} = require('../middleware/authMiddleware');
 
 // Lead management routes
-router.post('/',isAuthenticated, 
-    // checkRoleOrPermission('CREATE_LEAD'), 
+router.post('/',isAuthenticated,
+    // checkRoleOrPermission('CREATE_LEAD'),
     leadController.createLead);
-router.get('/', isAuthenticated, 
-    // checkRoleOrPermission('READ_LEAD'), 
+router.get('/', isAuthenticated,
+    // checkRoleOrPermission('READ_LEAD'),
     leadController.getAllLeads);
-router.get('/:leadId',isAuthenticated, 
-    // checkRoleOrPermission('READ_LEAD'), 
+
+// Specific routes must come before parameterized routes
+router.get('/check-phone-referral', isAuthenticated, leadController.checkPhoneReferral);
+
+router.get('/:leadId',isAuthenticated,
+    // checkRoleOrPermission('READ_LEAD'),
     leadController.getLeadById);
 router.put('/:leadId',isAuthenticated,
     // checkRoleOrPermission('UPDATE_LEAD'),
