@@ -10,11 +10,10 @@ const createAffiliate = async (req, res) => {
         if (phoneNumber) {
             const existingUser = await User.findOne({ phoneNumber }).populate('roles');
             if (existingUser) {
-                const ambassadorRoleId = await getConfig('AMBASSADOR_ROLE_ID');
-                const isAmbassador = existingUser.roles.some(role => 
-                    role._id.toString() === ambassadorRoleId
+                const isAmbassador = existingUser.roles.some(role =>
+                    role.name.toLowerCase() === 'ambassador'
                 );
-                
+
                 if (isAmbassador) {
                     return res.status(400).json({ 
                         message: 'Ambassadors cannot register as Affiliates. Self-referral commission is not allowed as per IRDAI guidelines.',
@@ -27,9 +26,8 @@ const createAffiliate = async (req, res) => {
         if (email) {
             const existingUserByEmail = await User.findOne({ email }).populate('roles');
             if (existingUserByEmail) {
-                const ambassadorRoleId = await getConfig('AMBASSADOR_ROLE_ID');
-                const isAmbassador = existingUserByEmail.roles.some(role => 
-                    role._id.toString() === ambassadorRoleId
+                const isAmbassador = existingUserByEmail.roles.some(role =>
+                    role.name.toLowerCase() === 'ambassador'
                 );
                 
                 if (isAmbassador) {

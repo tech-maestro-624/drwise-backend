@@ -83,7 +83,7 @@ async function convertLead(
   console.log(secondDegUserId);
 
   if (secondDegUserId) {
-    const secondDegUser = await User.findById(secondDegUserId);
+    const secondDegUser = await User.findById(secondDegUserId).populate('roles');
     console.log('secondDegUser :',secondDegUser);
     
     if (secondDegUser) {
@@ -95,17 +95,11 @@ async function convertLead(
         );
        
       }
-      const ambassadorRoleConfig = await getConfig('AMBASSADOR_ROLE_ID');
-      console.log('ambassadorRoleConfig',ambassadorRoleConfig);
-      
+      // Check if second-degree user has Ambassador role by role name
+      const secondDegUserRoleNames = secondDegUser.roles ? secondDegUser.roles.map(role => role.name.toLowerCase()) : [];
+      const isAmbassador = secondDegUserRoleNames.includes('ambassador');
 
-      if (!ambassadorRoleConfig) {
-        throw new Error('AMBASSADOR_ROLE_ID config not found');
-      }
-      const ambassadorRoleId = ambassadorRoleConfig;
-      console.log('ambassadorRoleId ;',ambassadorRoleId);
-      
-      if (secondDegUser.roles && secondDegUser.roles.includes(ambassadorRoleId)) {
+      if (isAmbassador) {
         if (secondDegWallet) {
           const secondDegConfig = await getConfig('SECOND_DEGREE_VALUATION');
           if (!secondDegConfig) {

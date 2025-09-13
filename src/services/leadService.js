@@ -2,7 +2,6 @@
 
 const Lead = require('../models/Lead');
 const User = require('../models/User');
-const { getConfig } = require('./configurationService');
 
 // Utility function to normalize product IDs (handle both single and array)
 function normalizeProductIds(productIds) {
@@ -41,23 +40,19 @@ async function checkSelfReferral(phoneNumber, referrerId) {
       };
     }
 
-    // Get role IDs from configuration
-    const affiliateRoleId = await getConfig('AFFILIATE_ROLE_ID');
-    const ambassadorRoleId = await getConfig('AMBASSADOR_ROLE_ID');
-
-    // Check if referrer has Affiliate or Ambassador role
-    const referrerRoleIds = referrer.roles.map(role => role._id.toString());
-    const isAffiliate = referrerRoleIds.includes(affiliateRoleId);
-    const isAmbassador = referrerRoleIds.includes(ambassadorRoleId);
+    // Check if referrer has Affiliate or Ambassador role by role name
+    const referrerRoleNames = referrer.roles.map(role => role.name.toLowerCase());
+    const isAffiliate = referrerRoleNames.includes('affiliate');
+    const isAmbassador = referrerRoleNames.includes('ambassador');
 
     if (isAffiliate || isAmbassador) {
       // Check if the phone number belongs to another user with Affiliate or Ambassador role
       const existingUser = await User.findOne({ phoneNumber }).populate('roles');
-      
+
       if (existingUser) {
-        const existingUserRoleIds = existingUser.roles.map(role => role._id.toString());
-        const isExistingUserAffiliate = existingUserRoleIds.includes(affiliateRoleId);
-        const isExistingUserAmbassador = existingUserRoleIds.includes(ambassadorRoleId);
+        const existingUserRoleNames = existingUser.roles.map(role => role.name.toLowerCase());
+        const isExistingUserAffiliate = existingUserRoleNames.includes('affiliate');
+        const isExistingUserAmbassador = existingUserRoleNames.includes('ambassador');
 
         if (isExistingUserAffiliate || isExistingUserAmbassador) {
           return {

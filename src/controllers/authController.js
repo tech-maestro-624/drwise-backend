@@ -32,9 +32,14 @@ exports.register = async (req, res) => {
     // Get uploaded files
     const files = req.files || {};
 
-    // Get configuration values
-    const userRole = await getConfig('USER_ROLE_ID');
-    const ambassadorRole = await getConfig('AMBASSADOR_ROLE_ID');
+    // Get role IDs by name
+    const Role = require('../models/Role');
+    const userRole = await Role.findOne({ name: { $regex: /^user$/i } });
+    const ambassadorRole = await Role.findOne({ name: { $regex: /^ambassador$/i } });
+
+    if (!userRole) {
+      throw new Error('User role not found in database');
+    }
 
     // Handle referral code
     let referredBy = null;
@@ -42,7 +47,7 @@ exports.register = async (req, res) => {
 
     if (userData.referralCode) {
       const normalizedReferralCode = userData.referralCode.trim().toLowerCase();
-      const referringUser = await User.findOne({ refCode: normalizedReferralCode }).session(session);
+      const referringUser = await User.findOne({ refCode: normalizedReferralCode }).populate('roles').session(session);
       if (referringUser) {
         // Check for self-referral prevention
         if (referringUser.phoneNumber === userData.phoneNumber) {
@@ -50,7 +55,9 @@ exports.register = async (req, res) => {
         }
         
         referredBy = referringUser._id;
-        if (referringUser.roles.includes(ambassadorRole)) {
+        // Check if referring user is an ambassador by role name
+        const referringUserRoleNames = referringUser.roles.map(role => role.name.toLowerCase());
+        if (referringUserRoleNames.includes('ambassador')) {
           ambassadorId = referringUser._id;
         }
       } else {
@@ -93,7 +100,7 @@ exports.register = async (req, res) => {
       name: userData.name,
       email: userData.email,
       phoneNumber: userData.phoneNumber,
-      roles: [userRole],
+      roles: [userRole._id],
       referredBy,
       ambassadorId,
       otp: userData.otp || crypto.randomInt(100000, 999999).toString(),
@@ -391,16 +398,21 @@ exports.registerAmbassador = async (req, res) => {
   const { name, email, phoneNumber, startDate, endDate, subscriptionAmount, otp, otpExpires } = req.body;
 
   try {
-    const ambassadorRole = await getConfig('AMBASSADOR_ROLE_ID');
-    const affiliateRole = await getConfig('AFFILIATE_ROLE_ID');
+    const Role = require('../models/Role');
+    const ambassadorRole = await Role.findOne({ name: { $regex: /^ambassador$/i } });
+    const affiliateRole = await Role.findOne({ name: { $regex: /^affiliate$/i } });
+
+    if (!ambassadorRole) {
+      throw new Error('Ambassador role not found in database');
+    }
 
     const existingUser = await User.findOne({ $or: [{ phoneNumber }, { email }] }).populate('roles');
     if (existingUser) {
       // Check if existing user is an Affiliate
-      const isAffiliate = existingUser.roles.some(role => 
-        role._id.toString() === affiliateRole
+      const isAffiliate = existingUser.roles.some(role =>
+        role.name.toLowerCase() === 'affiliate'
       );
-      
+
       if (isAffiliate) {
         return res.status(400).json({ 
           message: 'Affiliates cannot register as Ambassadors. Self-referral commission is not allowed as per IRDAI guidelines.',
@@ -415,7 +427,7 @@ exports.registerAmbassador = async (req, res) => {
       name,
       email,
       phoneNumber,
-      roles: [ambassadorRole],
+      roles: [ambassadorRole._id],
       otp,
       otpExpires,
       verified: true
