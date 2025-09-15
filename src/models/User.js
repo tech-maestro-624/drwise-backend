@@ -134,7 +134,7 @@ UserSchema.pre('save', async function (next) {
       const { customAlphabet } = await import('nanoid');
       const nanoid = customAlphabet('1234567890abcdef', 4);
       const uniqueId = nanoid();
-      const firstName = this.name ? this.name.split(' ')[0] : 'user';
+      const firstName = this.name ? this.name.split(' ')[0] : 'affiliate';
       const prefix = firstName.substring(0, 4).toLowerCase();
       this.refCode = `${prefix}-${uniqueId}`;
     } catch (error) {

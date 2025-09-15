@@ -87,7 +87,7 @@ exports.getUserModelsAndPermissions = async (userId) => {
  * @param {Object} data - The data to create the user with.
  * @returns {Promise<void>}
  */
-exports.register = async (roleName = 'DEFAULT_USER', data) => {
+exports.register = async (roleName = 'DEFAULT_AFFILIATE', data) => {
   try {
     // Fetch role configuration
     const roleConfig = await Configuration.findOne({ name: roleName });
@@ -128,8 +128,8 @@ exports.clientLoginOrRegister = async (data) => {
       console.log(otp);
       return true;
     } else {
-      // Register the user with the client role
-      await this.register('DEFAULT_USER',data);
+      // Register the user with the affiliate role
+      await this.register('DEFAULT_AFFILIATE',data);
       return false;
     }
   } catch (error) {
@@ -148,18 +148,18 @@ exports.updatePushNotifyToken = async(id,token) => {
 
 exports.sendNotification = async (data) => {
   try {
-    // Find the configuration for the client role
-    const roleConfig = await Configuration.findOne({ name: 'CLIENT_ROLE_ID' });
+    // Find the configuration for the affiliate role
+    const roleConfig = await Configuration.findOne({ name: 'AFFILIATE_ROLE_ID' });
 
     if (!roleConfig) {
-      throw new Error('Client role configuration not found.');
+      throw new Error('Affiliate role configuration not found.');
     }
 
-    const clientRoleId = roleConfig.value;
+    const affiliateRoleId = roleConfig.value;
 
     // Find all users who have the specified role in their roles array and a pushNotificationToken
     const users = await User.find({
-      roles: clientRoleId,
+      roles: affiliateRoleId,
       pushNotificationToken: { $exists: true, $ne: null }
     });
 

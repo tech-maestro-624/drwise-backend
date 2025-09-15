@@ -34,11 +34,11 @@ exports.register = async (req, res) => {
 
     // Get role IDs by name
     const Role = require('../models/Role');
-    const userRole = await Role.findOne({ name: { $regex: /^user$/i } });
+    const affiliateRole = await Role.findOne({ name: { $regex: /^affiliate$/i } });
     const ambassadorRole = await Role.findOne({ name: { $regex: /^ambassador$/i } });
 
-    if (!userRole) {
-      throw new Error('User role not found in database');
+    if (!affiliateRole) {
+      throw new Error('Affiliate role not found in database');
     }
 
     // Handle referral code
@@ -80,14 +80,14 @@ exports.register = async (req, res) => {
 
     if (files.aadharFile && files.aadharFile.length > 0) {
       filePromises.push(
-        fileService.uploadFile(files.aadharFile[0], 'user', 'documents')
+        fileService.uploadFile(files.aadharFile[0], 'affiliate', 'documents')
           .then(file => { uploadedFiles.aadharFileId = file._id; })
       );
     }
 
     if (files.selfieFile && files.selfieFile.length > 0) {
       filePromises.push(
-        fileService.uploadFile(files.selfieFile[0], 'user', 'documents')
+        fileService.uploadFile(files.selfieFile[0], 'affiliate', 'documents')
           .then(file => { uploadedFiles.selfieFileId = file._id; })
       );
     }
@@ -100,7 +100,7 @@ exports.register = async (req, res) => {
       name: userData.name,
       email: userData.email,
       phoneNumber: userData.phoneNumber,
-      roles: [userRole._id],
+      roles: [affiliateRole._id],
       referredBy,
       ambassadorId,
       otp: userData.otp || crypto.randomInt(100000, 999999).toString(),
@@ -321,7 +321,7 @@ exports.updateUserDocuments = async (req, res) => {
     if (files.aadharFile && files.aadharFile.length > 0 && user.aadharFile) {
       await fileService.deleteFile(user.aadharFile.toString());
       filePromises.push(
-        fileService.uploadFile(files.aadharFile[0], 'user', 'documents')
+        fileService.uploadFile(files.aadharFile[0], 'affiliate', 'documents')
           .then(file => { uploadedFiles.aadharFileId = file._id; })
       );
     }
@@ -329,7 +329,7 @@ exports.updateUserDocuments = async (req, res) => {
     if (files.selfieFile && files.selfieFile.length > 0 && user.selfieFile) {
       await fileService.deleteFile(user.selfieFile.toString());
       filePromises.push(
-        fileService.uploadFile(files.selfieFile[0], 'user', 'documents')
+        fileService.uploadFile(files.selfieFile[0], 'affiliate', 'documents')
           .then(file => { uploadedFiles.selfieFileId = file._id; })
       );
     }
@@ -337,14 +337,14 @@ exports.updateUserDocuments = async (req, res) => {
     // Upload new files if no existing files
     if (files.aadharFile && files.aadharFile.length > 0 && !user.aadharFile) {
       filePromises.push(
-        fileService.uploadFile(files.aadharFile[0], 'user', 'documents')
+        fileService.uploadFile(files.aadharFile[0], 'affiliate', 'documents')
           .then(file => { uploadedFiles.aadharFileId = file._id; })
       );
     }
 
     if (files.selfieFile && files.selfieFile.length > 0 && !user.selfieFile) {
       filePromises.push(
-        fileService.uploadFile(files.selfieFile[0], 'user', 'documents')
+        fileService.uploadFile(files.selfieFile[0], 'affiliate', 'documents')
           .then(file => { uploadedFiles.selfieFileId = file._id; })
       );
     }

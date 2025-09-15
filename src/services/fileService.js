@@ -6,7 +6,7 @@ const baseURL = process.env.BASE_URL || "http://localhost:5001";
 
 /**
  * Generates a file path for storing files based on entity type, entity name, and file name.
- * @param {string} entityType - The type of entity (e.g., 'user', 'order').
+ * @param {string} entityType - The type of entity (e.g., 'affiliate', 'order').
  * @param {string} entityName - The name of the entity.
  * @param {string} fileName - The name of the file.
  * @returns {string} The file path.
