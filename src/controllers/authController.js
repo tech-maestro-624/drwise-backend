@@ -108,13 +108,15 @@ exports.register = async (req, res) => {
       verified: false,
       verificationStatus: files.aadharFile && files.selfieFile ? 'pending' : 'pending',
       verificationSubmittedAt: files.aadharFile && files.selfieFile ? new Date() : null,
-      // Bank details
-      accountNumber: bankDetails.accountNumber || null,
-      ifscCode: bankDetails.ifscCode || null,
-      upiId: bankDetails.upiId || null,
-      bankName: bankDetails.bankName || null,
-      accountHolderName: bankDetails.accountHolderName || null,
-      branchName: bankDetails.branchName || null,
+      // Bank details - store in nested banking object as per User model
+      banking: {
+        accountNumber: bankDetails.accountNumber || null,
+        ifscCode: bankDetails.ifscCode || null,
+        upiId: bankDetails.upiId || null,
+        bankName: bankDetails.bankName || null,
+        accountHolderName: bankDetails.accountHolderName || null,
+        branchName: bankDetails.branchName || null,
+      },
       // File references
       aadharFile: uploadedFiles.aadharFileId || null,
       selfieFile: uploadedFiles.selfieFileId || null,
