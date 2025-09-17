@@ -25,6 +25,10 @@ const ProductSchema = new mongoose.Schema({
      type : Number,
     required : false
   },
+  uptoPrice : {
+    type : Number,
+    required : false
+  },
   immediateCredit:{
     type : Boolean,
     default : false

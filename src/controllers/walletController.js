@@ -82,3 +82,13 @@ exports.withdrawalRequestByUser = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.getUnreleasedTransactions = async (req, res) => {
+  try {
+    const transactions = await walletService.getUnreleasedTransactions(req.user._id);
+    res.status(200).json(transactions);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to retrieve unreleased transactions' });
+  }
+};

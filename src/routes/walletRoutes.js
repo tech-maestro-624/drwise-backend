@@ -8,6 +8,7 @@ router.get('/', isAuthenticated, checkRoleOrPermission('READ_WALLET'), walletCon
 router.post('/credit', isAuthenticated, checkRoleOrPermission('UPDATE_WALLET'), walletController.creditWallet);
 router.post('/debit', isAuthenticated, checkRoleOrPermission('UPDATE_WALLET'), walletController.debitWallet);
 router.get('/transactions', isAuthenticated, checkRoleOrPermission('READ_WALLET'), walletController.getWalletTransactions);
+router.get('/transactions/unreleased', isAuthenticated, checkRoleOrPermission('READ_WALLET'), walletController.getUnreleasedTransactions);
 
 // Additional routes for withdrawal
 router.post('/withdraw-request', isAuthenticated, walletController.withdrawRequest);

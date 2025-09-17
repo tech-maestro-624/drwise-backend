@@ -134,12 +134,16 @@ async function debitWallet(userId, amount, description = 'Debit', transactionId)
  * Retrieve all wallet transactions for the current user.
  */
 async function getWalletTransactions(userId) {
-  const wallet = await getWalletByUserId(userId);
-  const populatedWallet = await Wallet.findById(wallet._id).populate({
-    path: 'transactions',
-    options: { sort: { createdAt: -1 } } // Sort by newest first
-  });
-  return populatedWallet.transactions;
+  const transactions = await Transaction.find({
+    userId,
+    $or: [
+      { isCredit: { $ne: false } },
+      { scheduledCreditDate: { $exists: false } },
+      { scheduledCreditDate: null }
+    ]
+  }).sort({ createdAt: -1 }); // Sort by newest first
+
+  return transactions;
 }
 
 /**
@@ -205,11 +209,25 @@ async function withdrawalRequestByUser(userId) {
   return pendingTransactions;
 }
 
+/**
+ * Retrieve all unreleased transactions for the current user.
+ */
+async function getUnreleasedTransactions(userId) {
+  const transactions = await Transaction.find({
+    userId,
+    isCredit: false,
+    scheduledCreditDate: { $exists: true, $ne: null },
+  }).sort({ scheduledCreditDate: 1 }); // Sort by soonest release date first
+
+  return transactions;
+}
+
 module.exports = {
   getWalletByUserId,
   creditWallet,
   debitWallet,
   getWalletTransactions,
+  getUnreleasedTransactions,
   withdrawalRequest,
   withdrawalRequests,
   update,
