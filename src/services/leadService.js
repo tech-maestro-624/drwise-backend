@@ -177,6 +177,48 @@ async function updateLead(leadId, data) {
   return lead;
 }
 
+// Update lead status with optional transaction ID linking
+async function updateLeadStatus(leadId, status, transactionId = null) {
+  try {
+    const updateData = { status };
+    
+    // If transaction ID is provided, link it to the lead
+    if (transactionId) {
+      updateData.transactionId = transactionId;
+    }
+
+    const lead = await Lead.findByIdAndUpdate(
+      leadId, 
+      { $set: updateData }, 
+      { new: true }
+    ).populate('referrer categoryId productId');
+
+    if (!lead) {
+      throw new Error('Lead not found');
+    }
+
+    return lead;
+  } catch (error) {
+    throw new Error(`Failed to update lead status: ${error.message}`);
+  }
+}
+
+// Get lead by custom leadId (not MongoDB _id)
+async function getLeadByCustomId(leadId) {
+  try {
+    const lead = await Lead.findOne({ leadId })
+      .populate('referrer categoryId productId');
+    
+    if (!lead) {
+      throw new Error('Lead not found');
+    }
+
+    return lead;
+  } catch (error) {
+    throw new Error(`Failed to get lead: ${error.message}`);
+  }
+}
+
 async function deleteLead(leadId) {
   const lead = await Lead.findByIdAndDelete(leadId);
   if (!lead) {
@@ -250,6 +292,8 @@ module.exports = {
   getAllLeads,
   getLeadById,
   updateLead,
+  updateLeadStatus,
+  getLeadByCustomId,
   deleteLead,
   migrateOldLeadProducts,
   getLeadProducts,

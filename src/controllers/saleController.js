@@ -61,10 +61,43 @@ async function deleteSale(req, res) {
   }
 }
 
+// Convert a lead to a sale
+async function convertLeadToSale(req, res) {
+  try {
+    const { leadId } = req.params;
+    const saleData = req.body;
+
+    // Validate required fields
+    if (!saleData.price || !saleData.referralBonus) {
+      return res.status(400).json({ 
+        message: 'Missing required fields: price, referralBonus' 
+      });
+    }
+
+    const sale = await saleService.convertLeadToSale(leadId, saleData);
+    
+    res.status(201).json({
+      message: 'Lead successfully converted to sale',
+      sale,
+      transactionId: sale.transactionId,
+      leadId: sale.leadId
+    });
+  } catch (error) {
+    if (error.message.includes('Lead not found')) {
+      return res.status(404).json({ message: error.message });
+    }
+    if (error.message.includes('already been converted')) {
+      return res.status(409).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message });
+  }
+}
+
 module.exports = {
   createSale,
   getSaleById,
   getAllSales,
   updateSale,
   deleteSale,
+  convertLeadToSale,
 };

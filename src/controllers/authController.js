@@ -9,6 +9,7 @@ const subscriptionService = require('../services/subscriptionService');
 const fileService = require('../services/fileService');
 const userService = require('../services/userService');
 const paymentService = require('../services/paymentService');
+const { generateAndSaveOtp, verifyOtp, clearOtp } = require('../services/otpService');
 const Subscription = require('../models/Subscription');
 
 exports.register = async (req, res) => {
@@ -193,27 +194,13 @@ exports.sendOtp = async (req, res) => {
   const { phoneNumber } = req.body;
 
   try {
-    const user = await User.findOne({ phoneNumber });
-    console.log(user);
-    
-    if (!user) {
-      return res.status(400).json({ message: 'User does not exist. Please register first.' });
-    }
-
-    if (!user.active) {
-      return res.status(400).json({ message: 'Your account Deactivate, Contact Admin' });
-    }
-
-    const otp = crypto.randomInt(100000, 999999).toString();
-    const otpExpires = Date.now() + 5 * 60 * 1000;
-
-    user.otp = otp;
-    user.otpExpires = otpExpires;
-    await user.save();
-
+    const otp = await generateAndSaveOtp(phoneNumber);
     res.status(200).json({ message: 'OTP sent successfully', otp });
   } catch (err) {
     console.error(err);
+    if (err.message.includes('User does not exist') || err.message.includes('deactivated')) {
+      return res.status(400).json({ message: err.message });
+    }
     res.status(500).json({ message: 'Failed to send OTP' });
   }
 };
@@ -227,7 +214,8 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: 'Incorrect phone number.' });
     }
 
-    if (user.otp !== otp || user.otpExpires < Date.now()) {
+    const isOtpValid = await verifyOtp(phoneNumber, otp);
+    if (!isOtpValid) {
       return res.status(400).json({ message: 'Invalid or expired OTP.' });
     }
 
@@ -260,6 +248,9 @@ exports.login = async (req, res) => {
     const populatedUser = await User.findById(user._id)
       .populate({ path: 'roles', populate: { path: 'permissions', model: 'Permission' } })
       .populate('permissions');
+
+    // Clear OTP after successful login
+    await clearOtp(phoneNumber);
 
     return res.status(200).json({
       message: 'Login successful',

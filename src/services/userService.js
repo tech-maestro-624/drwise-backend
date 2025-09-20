@@ -3,7 +3,7 @@ const {loadModels} = require('../utils/loadModels');
 const Configuration = require('../models/Configuration')
 const Role = require('../models/Role')
 const Lead = require('../models/Lead');
-const { sendOtp } = require('../controllers/authController');
+const { generateAndSaveOtp } = require('./otpService');
 const sendPushNotification = require("../utils/pushNotification");
 const Wallet = require('../models/Wallet')
 const cacheService = require('./cacheService');
@@ -110,7 +110,7 @@ exports.register = async (roleName = 'DEFAULT_AFFILIATE', data) => {
     await user.save();
 
     // Generate and log OTP
-    const otp = await sendOtp(user.phoneNumber);
+    const otp = await generateAndSaveOtp(user.phoneNumber);
   } catch (error) {
     throw new Error(`Error during registration: ${error.message}`);
   }
@@ -124,7 +124,7 @@ exports.clientLoginOrRegister = async (data) => {
     if (user) {
 
       // Generate and log OTP
-      const otp = await sendOtp(data.phoneNumber);
+      const otp = await generateAndSaveOtp(data.phoneNumber);
       console.log(otp);
       return true;
     } else {

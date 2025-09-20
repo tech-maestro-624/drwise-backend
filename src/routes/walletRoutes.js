@@ -16,4 +16,7 @@ router.post('/withdrawal-requests', isAuthenticated, walletController.withdrawal
 router.put('/update/:id', isAuthenticated, walletController.update);
 router.post('/withdrawal-request/:id', isAuthenticated, walletController.withdrawalRequestByUser);
 
+// Admin route for migrating transaction IDs
+router.post('/migrate-transaction-ids', isAuthenticated, checkRoleOrPermission('ADMIN'), walletController.migrateTransactionIds);
+
 module.exports = router;

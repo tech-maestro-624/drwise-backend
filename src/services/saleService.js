@@ -1,6 +1,7 @@
 // services/saleService.js
 
 const Sale = require('../models/Sale');
+const Lead = require('../models/Lead');
 
 // Create a new sale
 async function createSale(data) {
@@ -60,10 +61,58 @@ async function deleteSale(id) {
   return await Sale.findByIdAndDelete(id);
 }
 
+// Convert a lead to a sale with proper transaction linking
+async function convertLeadToSale(leadId, saleData) {
+  try {
+    // Find the lead by MongoDB ID
+    const lead = await Lead.findById(leadId).populate('productId referrer categoryId');
+    
+    if (!lead) {
+      throw new Error('Lead not found');
+    }
+
+    if (lead.status === 'Converted') {
+      throw new Error('Lead has already been converted to a sale');
+    }
+
+    // Create the sale with lead information and provided sale data
+    const salePayload = {
+      leadId: lead.leadId, // Use the custom leadId
+      lead: lead._id,
+      product: lead.productId._id,
+      productId: lead.productId._id,
+      categoryId: lead.categoryId._id,
+      referrer: lead.referrer._id,
+      price: saleData.price || lead.productId.estimatedPrice || 0,
+      referralBonus: saleData.referralBonus || 0,
+      conversionDate: new Date(),
+      ...saleData
+    };
+
+    // Create the sale (transactionId will be auto-generated)
+    const sale = new Sale(salePayload);
+    const savedSale = await sale.save();
+
+    // Update the lead status to 'Converted' and link the transaction ID
+    await Lead.findByIdAndUpdate(leadId, {
+      status: 'Converted',
+      transactionId: savedSale.transactionId
+    });
+
+    // Return the sale with populated fields
+    return await Sale.findById(savedSale._id)
+      .populate('lead product referrer categoryId');
+
+  } catch (error) {
+    throw new Error(`Failed to convert lead to sale: ${error.message}`);
+  }
+}
+
 module.exports = {
   createSale,
   getSaleById,
   getAllSales,
   updateSale,
   deleteSale,
+  convertLeadToSale,
 };

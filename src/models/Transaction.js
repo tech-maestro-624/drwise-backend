@@ -1,5 +1,6 @@
 // models/Transaction.js
 const mongoose = require('mongoose');
+const { generateUniqueTransactionId } = require('../utils/idGenerator');
 
 const TransactionSchema = new mongoose.Schema(
   {
@@ -45,7 +46,8 @@ const TransactionSchema = new mongoose.Schema(
     },
     transactionId: {
       type: String,
-      default: null,
+      unique: true,
+      required: true,
     },
     isCredit:{
       type: Boolean,
@@ -58,5 +60,17 @@ const TransactionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Pre-save middleware to generate unique transactionId
+TransactionSchema.pre('save', async function(next) {
+  if (this.isNew && !this.transactionId) {
+    try {
+      this.transactionId = await generateUniqueTransactionId();
+    } catch (error) {
+      return next(error);
+    }
+  }
+  next();
+});
 
 module.exports = mongoose.model('Transaction', TransactionSchema);

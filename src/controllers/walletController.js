@@ -92,3 +92,21 @@ exports.getUnreleasedTransactions = async (req, res) => {
     res.status(500).json({ message: 'Failed to retrieve unreleased transactions' });
   }
 };
+
+// Migration endpoint to add transactionId to existing transactions (admin only)
+exports.migrateTransactionIds = async (req, res) => {
+  try {
+    const { runTransactionMigration } = require('../utils/migrateTransactions');
+    const result = await runTransactionMigration();
+    res.status(200).json({
+      message: 'Transaction ID migration completed successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('Transaction ID migration error:', error);
+    res.status(500).json({
+      message: 'Failed to migrate transaction IDs',
+      error: error.message
+    });
+  }
+};

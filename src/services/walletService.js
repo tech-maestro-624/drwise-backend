@@ -47,7 +47,7 @@ async function creditWallet(userId, amount, description = 'Credit') {
   // 2) Increase balance
   wallet.balance += Number(amount);
 
-  // 3) Create a new Transaction
+  // 3) Create a new Transaction (transactionId will be auto-generated)
   const transaction = new Transaction({
     wallet: wallet._id,
     userId,
@@ -94,7 +94,10 @@ async function debitWallet(userId, amount, description = 'Debit', transactionId)
   if (pendingTransaction) {
     // Approve the existing pending transaction
     pendingTransaction.status = 'approved';
-    pendingTransaction.transactionId = transactionId || pendingTransaction.transactionId;
+    // transactionId will be auto-generated if not present
+    if (transactionId) {
+      pendingTransaction.transactionId = transactionId;
+    }
     pendingTransaction.date = new Date();
     pendingTransaction.amount = Number(amount);
     pendingTransaction.description = description;
@@ -108,7 +111,7 @@ async function debitWallet(userId, amount, description = 'Debit', transactionId)
     //   wallet.transactions.push(pendingTransaction._id);
     // }
   } else {
-    // Create a new approved transaction
+    // Create a new approved transaction (transactionId will be auto-generated)
     const newTransaction = new Transaction({
       wallet: wallet._id,
       userId,
@@ -116,8 +119,13 @@ async function debitWallet(userId, amount, description = 'Debit', transactionId)
       amount: Number(amount),
       description,
       status: 'approved',
-      transactionId,
     });
+    
+    // Set custom transactionId if provided
+    if (transactionId) {
+      newTransaction.transactionId = transactionId;
+    }
+    
     pendingTransaction = await newTransaction.save();
 
     wallet.balance -= Number(amount);
@@ -152,7 +160,7 @@ async function getWalletTransactions(userId) {
 async function withdrawalRequest(userId, amount) {
   const wallet = await getWalletByUserId(userId);
 
-  // Create a 'pending' transaction
+  // Create a 'pending' transaction (transactionId will be auto-generated)
   const transaction = new Transaction({
     wallet: wallet._id,
     userId,

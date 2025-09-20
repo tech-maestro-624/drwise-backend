@@ -20,4 +20,7 @@ router.put('/:id',isAuthenticated, checkRoleOrPermission('UPDATE_SALE'), saleCon
 // Delete a sale by ID
 router.delete('/:id',isAuthenticated, checkRoleOrPermission('DELETE_SALE'), saleController.deleteSale);
 
+// Convert a lead to a sale
+router.post('/convert-lead/:leadId',isAuthenticated, checkRoleOrPermission('CREATE_SALE'), saleController.convertLeadToSale);
+
 module.exports = router;
